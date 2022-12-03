@@ -5,13 +5,11 @@
 - ログの保存
 
 ## サンプル
-プログラム例
-
-
-コンソール出力
-
-
-[ログ]()
+- プログラム例  
+![プログラム例](https://github.com/e-kagaku-satellite-project/obc-debug-console/blob/main/sample/program.png)
+- コンソール出力  
+![コンソール出力](https://github.com/e-kagaku-satellite-project/obc-debug-console/blob/main/sample/console.png)
+- [ログ](https://github.com/e-kagaku-satellite-project/obc-debug-console/blob/main/sample/log_sample.txt)
 
 ## 追加予定の機能
 - GUI
