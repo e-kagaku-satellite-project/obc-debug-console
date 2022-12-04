@@ -53,7 +53,7 @@ class LogPrinter():
         level_cmbbox = sg.Combo(list(verbosity_levels.keys()), default_value=list(verbosity_levels.keys())[0], key='level', size=(20, 1), enable_events=True, readonly=True)
         open_btn = sg.Button('Open', key='open')
         close_btn = sg.Button('Close', key='close', disabled=True)
-        self.log_src = "log.csv"
+        self.log_src = "./log.csv"
         log_src_txt = sg.InputText(key='log_src', default_text=self.log_src, size=(30, 1), font=('Helvetica', 12), enable_events=True)
         console_mtl = sg.Multiline(size=(80, 25), font=('Ubuntu Mono', 12), expand_x=True, expand_y=True, key='console', background_color='#000000', horizontal_scroll=True)
         autoscroll_chkbox = sg.Checkbox('Auto scroll', key='autoscroll', default=True, enable_events=True)

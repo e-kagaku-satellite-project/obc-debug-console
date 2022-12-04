@@ -1,0 +1,2 @@
+pyserial==3.5
+pysimplegui==4.60.4
