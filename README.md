@@ -15,13 +15,22 @@
 - pyserial==3.5
 - pysimplegui==4.60.4
 
-
 ## サンプル
 - プログラム例  
 ![プログラム例](https://github.com/e-kagaku-satellite-project/obc-debug-console/blob/main/sample/program.png)
 - コンソール出力  
 ![コンソール出力](https://github.com/e-kagaku-satellite-project/obc-debug-console/blob/main/sample/console.png)
 - [ログ](https://github.com/e-kagaku-satellite-project/obc-debug-console/blob/main/sample/log_sample.csv)
+
+## PIC側での書き方
+通常出力の前に出力レベル指示詞（`FATAL,`，`ERROR,`，`WARN,`，`INFO,`，`DEBUG,`）を，一番最後に改行文字を加えないとコンソールには出力されないようになっています．  
+`PRINT_INFO`，`PRINT_DEBUG`等の出力関数を使えば自動的に追加されるようになっています．  
+(それらの関数の定義はMain CPUのdebug.hを確認してください．)  
+またコンソール側では改行文字を文の区切りとしているため，途中に改行文字を入れるとそれ以降が表示されなくなります．  
+
+コンソール側ではカンマはすべてタブに置換されて出力されるようにしています．  
+これはコンソール表示前の文字はCSV形式で閲覧しやすいようにする，コンソールでは余白を設けて見やすいようにするためです．
+
 
 ## テーマ
 CPUのテーマは各サブシステムで統一してもらえれば，自由に設定して構いません．  
@@ -33,3 +42,4 @@ CPUのテーマは各サブシステムで統一してもらえれば，自由�
 - コンソール内の文字を選択した際にハイライトする
 - コンソール内検索
 - 保存フォルダがシリアルオープン時に見えにくい現象の修正
+- 環境によってタブ幅が変わる現象の修正
