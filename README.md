@@ -9,6 +9,13 @@
 - オートスクロールの有効・無効
 - CPUごとのテーマ変更
 
+## 動作環境
+必ずしも同じである必要はないと思います．
+- Python3.9.12
+- pyserial==3.5
+- pysimplegui==4.60.4
+
+
 ## サンプル
 - プログラム例  
 ![プログラム例](https://github.com/e-kagaku-satellite-project/obc-debug-console/blob/main/sample/program.png)
