@@ -22,15 +22,31 @@ level_bg_colors = {
     'FATAL': '#FFFFFF',  # white
 }
 
+font_style_window = 'Helvetica'
+font_style_console = 'Ubuntu Mono'
 themes = {'Main CPU': 'Dark', 'Transmit CPU': 'DarkBlue', 'Receive CPU': 'DarkAmber'}
 verbosity_levels = {'DEBUG': 0, 'INFO': 1, 'WARN': 2, 'ERROR': 3, 'FATAL': 4, 'NONE': 5}
 cpus = ["Main CPU", "Transmit CPU", "Receive CPU"]
+cpu_log_src = {"Main CPU": "log_main_cpu.csv", "Transmit CPU": "log_trans_cpu.csv", "Receive CPU": "log_rcv_cpu.csv"}
 baudrates = [9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600]
+
+
+class ConfigWindow():
+    def __init__(self, log_printer: LogPrinter):
+        self.layout = [
+            [sg.Text('Tab length'), sg.InputText(key='tab_len', default_text=f'{log_printer.tab_len}', size=(5, 1), font=(font_style_window, 12), enable_events=True)],
+            [sg.Text('Font size')],
+            [sg.Text('    Console'), sg.InputText(key='console_font_size', default_text=f'{log_printer.console_font_size}', size=(5, 1), font=(font_style_window, 12), enable_events=True)],
+            [sg.Button('OK', key='ok'), sg.Button('Cancel', key='cancel')]
+        ]
+        self.window = sg.Window('Configlation', self.layout, resizable=True)
 
 
 class LogPrinter():
     def __init__(self):
         sg.theme(themes['Main CPU'])
+        self.tab_len = 6
+        self.console_font_size = 12
         self.create_window()
         self.pattern_tm = re.compile(r"(DEBUG,|INFO,|WARN,|ERROR,|FATAL,)(.*)\n")
 
@@ -44,33 +60,50 @@ class LogPrinter():
         self.create_window(cpu)
 
     def create_window(self, cpu='Main CPU') -> sg.Window:
-        ports = list_ports.comports()
-        devices = [info.device for info in ports] if len(ports) != 0 else ['']
-        self.port = devices[0]
-        cpu_cmbbox = sg.Combo(cpus, default_value=cpu, size=(15, 1), key='cpu', font=('Helvetica', 16), enable_events=True, readonly=True)
-        port_cmbbox = sg.Combo(devices, default_value=self.port, key='port', size=(20, 1), enable_events=True, readonly=True)
+        ports = self.listup_serial_ports()
+        menubar = sg.MenuBar([['File', ['Configure', 'Exit']]])
+        cpu_cmbbox = sg.Combo(cpus, default_value=cpu, size=(15, 1), key='cpu', font=(font_style_window, 16), enable_events=True, readonly=True)
+        port_cmbbox = sg.Combo(ports, default_value=self.port, key='port', size=(20, 1), enable_events=True, readonly=True)
         baudrate_cmbbox = sg.Combo(baudrates, default_value=baudrates[0], key='baudrate', size=(20, 1), enable_events=True, readonly=True)
         level_cmbbox = sg.Combo(list(verbosity_levels.keys()), default_value=list(verbosity_levels.keys())[0], key='level', size=(20, 1), enable_events=True, readonly=True)
         open_btn = sg.Button('Open', key='open')
         close_btn = sg.Button('Close', key='close', disabled=True)
-        self.log_src = "./log.csv"
-        log_src_txt = sg.InputText(key='log_src', default_text=self.log_src, size=(30, 1), font=('Helvetica', 12), enable_events=True)
-        console_mtl = sg.Multiline(size=(80, 25), font=('Ubuntu Mono', 12), expand_x=True, expand_y=True, key='console', background_color='#000000', horizontal_scroll=True)
+        refresh_btn = sg.Button('Refresh', key='refresh', enable_events=True)
+        self.log_src = cpu_log_src[cpu]
+        log_src_txt = sg.InputText(key='log_src', default_text=self.log_src, size=(30, 1), font=(font_style_window, 12), enable_events=True)
+        console_mtl = sg.Multiline(size=(80, 25), font=(font_style_console, self.console_font_size), expand_x=True, expand_y=True, key='console', background_color='#000000', horizontal_scroll=True)
         autoscroll_chkbox = sg.Checkbox('Auto scroll', key='autoscroll', default=True, enable_events=True)
         layouts = [
-            [cpu_cmbbox],
-            [port_cmbbox, baudrate_cmbbox, level_cmbbox, open_btn, close_btn],
-            [log_src_txt],
+            [menubar],
+            [cpu_cmbbox, log_src_txt, autoscroll_chkbox],
+            [port_cmbbox, baudrate_cmbbox, level_cmbbox, open_btn, close_btn, refresh_btn],
             [console_mtl],
-            [autoscroll_chkbox],
+            # [sg.Image(r'./img/background.png')]
         ]
         self.baudrate = baudrates[0]
         self.verbosity_level = list(verbosity_levels.values())[0]
         self.latest_telems = []  # バッファとして機能するようにリストにした，FIFO形式
         self.autoscroll = True
         self.is_open_serial = False
-        self.window = sg.Window('OBC Debugger', layouts, resizable=True)
+        self.window = sg.Window('OBC Debugger', layouts, resizable=True, use_default_focus=False, finalize=True)
+
+        # Shortcut-keys
+        self.window.bind('<Control-a>', 'autoscroll_key')
+        self.window.bind("<Control-o>", "open_key")  # Open serial port
+        self.window.bind("<Control-c>", "close_key")  # Close serial port
+        self.window.bind("<Control-r>", "refresh_key")  # Refresh serial port
+        self.window.bind("<Control-z>", "Exit")  # Exit
         sg.cprint_set_output_destination(self.window, 'console')
+
+    def listup_serial_ports(self):
+        devices = list_ports.comports()
+        ports = [info.device for info in devices] if len(devices) != 0 else ['']
+        self.port = ports[0]
+        return ports
+
+    def refresh_serial_ports(self):
+        ports = self.listup_serial_ports()
+        self.window['port'].update(values=ports, value=self.port)
 
     def start_reading_log(self):
         self.is_open_serial = True
@@ -117,44 +150,77 @@ class LogPrinter():
             f.write(f"{dt_now},{level},{','.join(line_data)}\n")
 
     def print_log(self, level: str, dt_now: str, line_data: list[str]):
-        echo_str = f"[{dt_now}] {level}\t" + "\t".join(line_data)
+        # echo_str = f"[{dt_now}] {level}\t" + "\t".join(line_data)
+        echo_str = "\t".join(line_data)
         echo_str = self.alignTabString(echo_str)
         sg.cprint(f"{echo_str}", autoscroll=self.autoscroll, end='\n', text_color=level_colors[level], background_color=level_bg_colors[level])
 
     def alignTabString(self, text: str):
-        tab_idxes = re.finditer('\t', text)
-        num_appended = 0
-        TAB_SIZE = 6
-        for i, idx in enumerate(tab_idxes):
-            text = text[:idx.start() + num_appended] + ' ' * (TAB_SIZE - ((idx.start() + num_appended) % TAB_SIZE)) + text[idx.start() + num_appended + 1:]
-            num_appended += TAB_SIZE - (idx.start() % TAB_SIZE) - 1
-        return text
+        strs_between_tabs = re.split('\t', text)
+        final_strs = ""
+        for i, s in enumerate(strs_between_tabs):
+            final_strs += s + ' ' * (self.tab_len - len(s) % self.tab_len)
+            final_strs += '    'if len(s) % self.tab_len == 0 else ''
+        return final_strs
 
 
 if __name__ == "__main__":
     log_printer = LogPrinter()
+    config_window = None
     while True:
-        event, values = log_printer.window.read(timeout=1)
-        if event == sg.WIN_CLOSED:
-            break
-        elif event == 'open':
-            log_printer.start_reading_log()
-        elif event == 'close':
-            log_printer.stop_reading_log()
-        elif event == 'port':
-            log_printer.port = values['port']
-        elif event == 'baudrate':
-            log_printer.baudrate = values['baudrate']
-        elif event == 'level':
-            log_printer.verbosity_level = verbosity_levels[values['level']]
-        elif event == 'log_src':
-            log_printer.log_src = values['log_src']
-        elif event == 'autoscroll':
-            log_printer.autoscroll = values['autoscroll']
-        elif event == 'cpu':
-            log_printer.change_theme(values['cpu'])
+        main_evt, main_vals = log_printer.window.read(timeout=1)
 
+        # if event != "__TIMEOUT__":
+        #     print(event)
+        if main_evt == sg.WIN_CLOSED or main_evt == 'Exit':
+            break
+        elif 'open' in main_evt:   # Open serial port
+            log_printer.start_reading_log()
+        elif 'close' in main_evt:  # Close serial port
+            log_printer.stop_reading_log()
+        elif 'refresh' in main_evt:
+            log_printer.refresh_serial_ports()
+        elif main_evt == 'port':   # Select serial port
+            log_printer.port = main_vals['port']
+        elif main_evt == 'baudrate':   # Set serial baudrate
+            log_printer.baudrate = main_vals['baudrate']
+        elif main_evt == 'level':  # Change verbosity level
+            log_printer.verbosity_level = verbosity_levels[main_vals['level']]
+        elif main_evt == 'log_src':    # Set log file path
+            log_printer.log_src = main_vals['log_src']
+        elif 'autoscroll' in main_evt:  # Change autoscroll enable or not
+            if main_evt == 'autoscroll_key':
+                log_printer.window['autoscroll'].update(not main_vals['autoscroll'])
+                log_printer.autoscroll = not main_vals['autoscroll']
+            else:
+                log_printer.autoscroll = main_vals['autoscroll']
+        elif main_evt == 'cpu':    # Select CPU (Change theme)
+            log_printer.change_theme(main_vals['cpu'])
+        elif main_evt == 'Configure':  # Open configuration window
+            config_window = ConfigWindow(log_printer)
+
+        # Print telemetry
         if len(log_printer.latest_telems) > 0:
             log_printer.print_log(*log_printer.latest_telems[0])
             log_printer.save_log(*log_printer.latest_telems[0])
             log_printer.latest_telems.pop(0)
+
+        # Configuration
+        if config_window:
+            config_evt, config_vals = config_window.window.read(timeout=1)
+            if config_evt == sg.WIN_CLOSED or config_evt == 'Exit':
+                config_window.window.close()
+                config_window = None
+            elif config_evt == 'ok':
+                consol_font_size = config_vals['console_font_size']
+                try:
+                    log_printer.console_font_size = int(config_vals['console_font_size'])
+                    log_printer.window['console'].update(font=(font_style_console, log_printer.console_font_size))
+                except:
+                    pass
+                try:
+                    log_printer.tab_len = int(config_vals['tab_len'])
+                except:
+                    pass
+                config_window.window.close()
+                config_window = None
