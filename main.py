@@ -2,6 +2,7 @@ from __future__ import annotations
 import PySimpleGUI as sg
 from src.log_printer import ConfigWindow, LogPrinter
 
+
 if __name__ == "__main__":
     log_printer = LogPrinter()
     config_window = None
