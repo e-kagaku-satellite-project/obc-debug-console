@@ -2,9 +2,12 @@ from __future__ import annotations
 import PySimpleGUI as sg
 from src.log_printer import ConfigWindow, LogPrinter
 
+
 if __name__ == "__main__":
     log_printer = LogPrinter()
     config_window = None
+    cnt = 0
+    max_cnt = 100
     while True:
         main_evt, main_vals = log_printer.window.read(timeout=1)
 
@@ -54,3 +57,14 @@ if __name__ == "__main__":
                 log_printer.configure_console(config_vals['console_font_size'], config_vals['tab_len'])
                 config_window.window.close()
                 config_window = None
+
+        # if cnt < max_cnt + 1:
+        #     log_printer.print_processing_bar("INFO", None, "Test", cnt, max_cnt)
+        #     cnt += 1
+        # elif cnt == max_cnt + 1:
+        #     log_printer.print_log("ERROR", None, ["Test"])
+        #     log_printer.print_log("INFO", None, ["Test"])
+        #     log_printer.print_log("DEBUG", None, ["Test"])
+        #     cnt += 1
+        # elif cnt > max_cnt + 1:
+        #     cnt = 0

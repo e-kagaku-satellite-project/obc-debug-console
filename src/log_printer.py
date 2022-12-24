@@ -1,11 +1,14 @@
 
 from __future__ import annotations
 import datetime
+import json
+import os
 import re
 import serial
 import threading
 import PySimpleGUI as sg
 from serial.tools import list_ports
+import tkinter as tk
 
 level_colors = {
     'DEBUG': '#FFFFFF',  # white
@@ -32,6 +35,12 @@ cpu_log_src = {"Main CPU": "log_main_cpu.csv", "Transmit CPU": "log_trans_cpu.cs
 baudrates = [9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600]
 
 
+def listup_serial_ports():
+    devices = list_ports.comports()
+    ports = [info.device for info in devices] if len(devices) != 0 else ['']
+    return ports
+
+
 class ConfigWindow():
     def __init__(self, log_printer: LogPrinter):
         self.layout = [
@@ -45,10 +54,11 @@ class ConfigWindow():
 
 class LogPrinter():
     def __init__(self):
-        sg.theme(themes['Main CPU'])
-        self.tab_len = 6
-        self.console_font_size = 12
-        self.create_window()
+        self.cpu = 'Main CPU'
+        sg.theme(themes[self.cpu])
+        self.create_config_file()
+        config = self.load_config()
+        self.create_window(config)
         self.pattern_tm = re.compile(r"(DEBUG,|INFO,|WARN,|ERROR,|FATAL,)(.*)\n")
 
     def __del__(self):
@@ -56,21 +66,61 @@ class LogPrinter():
         self.serial.close() if self.serial is not None else None
 
     def change_theme(self, cpu):
-        sg.theme(themes[cpu])
+        self.cpu = cpu
+        sg.theme(themes[self.cpu])
         self.window.close()
-        self.create_window(cpu)
+        config = self.load_config()
+        self.create_window(config)
 
-    def create_window(self, cpu='Main CPU') -> sg.Window:
-        ports = self.listup_serial_ports()
+    def create_config_file(self):
+        if not os.path.isfile("./config/config.json"):
+            os.makedirs("./config", exist_ok=True)
+            config = {
+                "Main CPU": {
+                    "port": "",
+                    "baudrate": 9600,
+                },
+                "Transmit CPU": {
+                    "port": "",
+                    "baudrate": 9600,
+                },
+                "Receive CPU": {
+                    "port": "",
+                    "baudrate": 9600,
+                },
+                "tab_len": 6,
+                "console_font_size": 12
+            }
+            with open("./config/config.json", "w") as f:
+                json.dump(config, f, indent=4)
+
+    def load_config(self):
+        with open('./config/config.json', 'r') as f:
+            config = json.load(f)
+        self.tab_len = config['tab_len']
+        self.console_font_size = config['console_font_size']
+        return config
+
+    def update_config(self, *args, **kwargs):
+        config = self.load_config()
+        for key, value in kwargs.items():
+            config[key] = value
+        with open('./config/config.json', 'w') as f:
+            json.dump(config, f, indent=4)
+
+    def create_window(self, config: dict) -> sg.Window:
+        ports = listup_serial_ports()
+        self.port = config[self.cpu]['port'] if config[self.cpu]['port'] in ports else ports[0]
+
         menubar = sg.MenuBar([['File', ['Configure', 'Exit']]])
-        cpu_cmbbox = sg.Combo(cpus, default_value=cpu, size=(15, 1), key='cpu', font=(font_style_window, 16), enable_events=True, readonly=True)
+        cpu_cmbbox = sg.Combo(cpus, default_value=self.cpu, size=(15, 1), key='cpu', font=(font_style_window, 16), enable_events=True, readonly=True)
         port_cmbbox = sg.Combo(ports, default_value=self.port, key='port', size=(20, 1), enable_events=True, readonly=True)
         baudrate_cmbbox = sg.Combo(baudrates, default_value=baudrates[0], key='baudrate', size=(20, 1), enable_events=True, readonly=True)
         level_cmbbox = sg.Combo(list(verbosity_levels.keys()), default_value=list(verbosity_levels.keys())[0], key='level', size=(20, 1), enable_events=True, readonly=True)
         open_btn = sg.Button('Open', key='open')
         close_btn = sg.Button('Close', key='close', disabled=True)
         refresh_btn = sg.Button('Refresh', key='refresh', enable_events=True)
-        self.log_src = cpu_log_src[cpu]
+        self.log_src = cpu_log_src[self.cpu]
         log_src_txt = sg.InputText(key='log_src', default_text=self.log_src, size=(30, 1), font=(font_style_window, 12), enable_events=True)
         console_mtl = sg.Multiline(size=(80, 25), font=(font_style_console, self.console_font_size), expand_x=True, expand_y=True, key='console', background_color='#000000', horizontal_scroll=True)
         autoscroll_chkbox = sg.Checkbox('Auto scroll', key='autoscroll', default=True, enable_events=True)
@@ -96,19 +146,16 @@ class LogPrinter():
         self.window.bind("<Control-z>", "Exit")  # Exit
         sg.cprint_set_output_destination(self.window, 'console')
 
-    def listup_serial_ports(self):
-        devices = list_ports.comports()
-        ports = [info.device for info in devices] if len(devices) != 0 else ['']
-        self.port = ports[0]
-        return ports
-
     def refresh_serial_ports(self):
-        ports = self.listup_serial_ports()
+        ports = listup_serial_ports()
+        config = self.load_config()
+        self.port = config[self.cpu]['port'] if config[self.cpu]['port'] in ports else ports[0]
         self.window['port'].update(values=ports, value=self.port)
 
     def start_reading_log(self):
         self.is_open_serial = True
         self.latest_telems = []
+        self.update_config(**{self.cpu: {'port': self.port, 'baudrate': self.baudrate}})
         try:
             self.serial = serial.Serial(self.port, self.baudrate)
             self.window['open'].update(disabled=True)
@@ -152,9 +199,29 @@ class LogPrinter():
 
     def print_log(self, level: str, dt_now: str, line_data: list[str]):
         # echo_str = f"[{dt_now}] {level}\t" + "\t".join(line_data)
-        echo_str = "\t".join(line_data)
-        echo_str = self.alignTabString(echo_str)
-        sg.cprint(f"{echo_str}", autoscroll=self.autoscroll, end='\n', text_color=level_colors[level], background_color=level_bg_colors[level])
+        if line_data[0] == "TQDM":
+            self.print_processing_bar(level, dt_now, line_data[1], int(line_data[2]), int(line_data[3]))
+        else:
+            echo_str = "\t".join(line_data)
+            echo_str = self.align_tab_string(echo_str)
+            sg.cprint(f"{echo_str}", autoscroll=self.autoscroll, end='\n', text_color=level_colors[level], background_color=level_bg_colors[level])
+
+    def print_processing_bar(self, level: str, dt_now: str, msg: str, step: int, max_step: int):
+        if step == 0:
+            echo_str = f"{msg}     [{step:4d} / {max_step:4d}]   "
+            echo_str += " " * 30
+            echo_str += "|"
+            sg.cprint(f"{echo_str}", autoscroll=self.autoscroll, end='\n', text_color=level_colors[level], background_color=level_bg_colors[level])
+        else:
+            echo_str = f"{msg}     [{step:4d} / {max_step:4d}]   "
+            echo_str += "#" * int(step / max_step * 30) + " " * (30 - int(step / max_step * 30))
+            echo_str += "|"
+            end_pos = self.window["console"].Widget.index(tk.END + '-1c')   # '-1c' means one character before the end, tk.END is the end of the text and it actually does not exist
+            end_pos = end_pos.split(".")
+            line = int(end_pos[0]) - 1
+            widget = self.window['console'].Widget
+            widget.delete(f'{line}.0', tk.END + '-1c')
+            sg.cprint(f"{echo_str}", autoscroll=self.autoscroll, end='\n', text_color=level_colors[level], background_color=level_bg_colors[level])
 
     def set_verbosity_level(self, level: str):
         self.verbosity_level = verbosity_levels[level]
@@ -170,7 +237,7 @@ class LogPrinter():
         except:
             pass
 
-    def alignTabString(self, text: str):
+    def align_tab_string(self, text: str):
         strs_between_tabs = re.split('\t', text)
         final_strs = ""
         for i, s in enumerate(strs_between_tabs):
