@@ -112,7 +112,6 @@ class LogPrinter():
     def create_window(self, config: dict) -> sg.Window:
         ports = listup_serial_ports()
         self.port = config[self.cpu]['port'] if config[self.cpu]['port'] in ports else ports[0]
-        default_txt = "aaaaaaa\nbbbbbbb\nccccccc\nddddddd\neeeeeee\nffffff\n" * 10
         menubar = sg.MenuBar([['File', ['Configure', 'Exit']], ['Console', ['Clear', 'Copy']]])
         cpu_cmbbox = sg.Combo(cpus, default_value=self.cpu, size=(15, 1), key='cpu', font=(font_style_window, 16), enable_events=True, readonly=True)
         port_cmbbox = sg.Combo(ports, default_value=self.port, key='port', size=(20, 1), enable_events=True, readonly=True)
@@ -123,7 +122,7 @@ class LogPrinter():
         refresh_btn = sg.Button('Refresh', key='refresh', enable_events=True)
         self.log_src = cpu_log_src[self.cpu]
         log_src_txt = sg.InputText(key='log_src', default_text=self.log_src, size=(30, 1), font=(font_style_window, 12), enable_events=True)
-        console_mtl = sg.Multiline(default_text=default_txt, size=(80, 25), font=(font_style_console, self.console_font_size), expand_x=True, expand_y=True, key='console', background_color='#000000', horizontal_scroll=True)
+        console_mtl = sg.Multiline(size=(80, 25), font=(font_style_console, self.console_font_size), expand_x=True, expand_y=True, key='console', background_color='#000000', horizontal_scroll=True)
         autoscroll_chkbox = sg.Checkbox('Auto scroll', key='autoscroll', default=True, enable_events=True)
         layouts = [
             [menubar],
