@@ -11,23 +11,24 @@ from serial.tools import list_ports
 import tkinter as tk
 
 level_colors = {
-    'DEBUG': '#FFFFFF',  # white
+    'DEBUG': None,  # white
     'INFO': '#00FF00',  # Green
-    'WARN': '#FFA500',  # Yellow
+    'WARN': '#FFE000',  # Orange(Yellow)
     'ERROR': '#FF0000',  # Red
     'FATAL': '#FF0000',  # Red
 }
 
 level_bg_colors = {
-    'DEBUG': '#000000',  # black
-    'INFO': '#000000',  # black
-    'WARN': '#000000',  # black
-    'ERROR': '#000000',  # black
-    'FATAL': '#FFFFFF',  # white
+    'DEBUG': None,  # black
+    'INFO': None,  # black
+    'WARN': None,  # black
+    'ERROR': None,  # black
+    'FATAL': '#FFFF00',  # Yellow
 }
 
 font_style_window = 'Helvetica'
 font_style_console = 'Ubuntu Mono'
+font_style_popup = 'Helvetica'
 themes = {'Main CPU': 'Dark', 'Transmit CPU': 'DarkBlue', 'Receive CPU': 'DarkAmber'}
 verbosity_levels = {'DEBUG': 0, 'INFO': 1, 'WARN': 2, 'ERROR': 3, 'FATAL': 4, 'NONE': 5}
 cpus = ["Main CPU", "Transmit CPU", "Receive CPU"]
@@ -111,8 +112,8 @@ class LogPrinter():
     def create_window(self, config: dict) -> sg.Window:
         ports = listup_serial_ports()
         self.port = config[self.cpu]['port'] if config[self.cpu]['port'] in ports else ports[0]
-
-        menubar = sg.MenuBar([['File', ['Configure', 'Exit']]])
+        default_txt = "aaaaaaa\nbbbbbbb\nccccccc\nddddddd\neeeeeee\nffffff\n" * 10
+        menubar = sg.MenuBar([['File', ['Configure', 'Exit']], ['Console', ['Clear', 'Copy']]])
         cpu_cmbbox = sg.Combo(cpus, default_value=self.cpu, size=(15, 1), key='cpu', font=(font_style_window, 16), enable_events=True, readonly=True)
         port_cmbbox = sg.Combo(ports, default_value=self.port, key='port', size=(20, 1), enable_events=True, readonly=True)
         baudrate_cmbbox = sg.Combo(baudrates, default_value=baudrates[0], key='baudrate', size=(20, 1), enable_events=True, readonly=True)
@@ -122,7 +123,7 @@ class LogPrinter():
         refresh_btn = sg.Button('Refresh', key='refresh', enable_events=True)
         self.log_src = cpu_log_src[self.cpu]
         log_src_txt = sg.InputText(key='log_src', default_text=self.log_src, size=(30, 1), font=(font_style_window, 12), enable_events=True)
-        console_mtl = sg.Multiline(size=(80, 25), font=(font_style_console, self.console_font_size), expand_x=True, expand_y=True, key='console', background_color='#000000', horizontal_scroll=True)
+        console_mtl = sg.Multiline(default_text=default_txt, size=(80, 25), font=(font_style_console, self.console_font_size), expand_x=True, expand_y=True, key='console', background_color='#000000', horizontal_scroll=True)
         autoscroll_chkbox = sg.Checkbox('Auto scroll', key='autoscroll', default=True, enable_events=True)
         layouts = [
             [menubar],
@@ -155,9 +156,9 @@ class LogPrinter():
     def start_reading_log(self):
         self.is_open_serial = True
         self.latest_telems = []
-        self.update_config(**{self.cpu: {'port': self.port, 'baudrate': self.baudrate}})
         try:
             self.serial = serial.Serial(self.port, self.baudrate)
+            self.update_config(**{self.cpu: {'port': self.port, 'baudrate': self.baudrate}})
             self.window['open'].update(disabled=True)
             self.window['close'].update(disabled=False)
             self.window['port'].update(disabled=True)
@@ -165,9 +166,9 @@ class LogPrinter():
             self.window['log_src'].update(disabled=True)
             self.read_telem_thread = threading.Thread(target=self.read_telemetry, daemon=True)
             self.read_telem_thread.start()
-        except serial.serialutil.SerialException:
+        except serial.serialutil.SerialException as e:
             self.serial = None
-            sg.popup('Failed to open serial port', title='Error', keep_on_top=True)
+            sg.popup(f'{e}', title='Failed to open serial port', keep_on_top=True, image="./img/yoshiiii.png", font=(font_style_popup, 12))
             self.stop_reading_log()
 
     def stop_reading_log(self):
@@ -193,35 +194,38 @@ class LogPrinter():
                     dt_now = datetime.datetime.now()
                     self.latest_telems.append([level, dt_now, [f"{s}" for s in re_result.group(2).split(",") if s]])
 
+    def clear_console(self):
+        self.window['console'].update(value='')
+
+    def copy_console(self):
+        self.window['console'].Widget.clipboard_clear()
+        self.window['console'].Widget.clipboard_append(self.window['console'].get())
+
     def save_log(self, level: str, dt_now: str, line_data: list[str]):
         with open(self.log_src, 'a') as f:
             f.write(f"{dt_now},{level},{','.join(line_data)}\n")
 
     def print_log(self, level: str, dt_now: str, line_data: list[str]):
         # echo_str = f"[{dt_now}] {level}\t" + "\t".join(line_data)
-        if line_data[0] == "TQDM":
+        if len(line_data) > 3 and line_data[0] == "TQDM":
             self.print_processing_bar(level, dt_now, line_data[1], int(line_data[2]), int(line_data[3]))
         else:
             echo_str = "\t".join(line_data)
             echo_str = self.align_tab_string(echo_str)
             sg.cprint(f"{echo_str}", autoscroll=self.autoscroll, end='\n', text_color=level_colors[level], background_color=level_bg_colors[level])
+        self.window['console'].Widget.tag_raise("sel")
 
     def print_processing_bar(self, level: str, dt_now: str, msg: str, step: int, max_step: int):
-        if step == 0:
-            echo_str = f"{msg}     [{step:4d} / {max_step:4d}]   "
-            echo_str += " " * 30
-            echo_str += "|"
-            sg.cprint(f"{echo_str}", autoscroll=self.autoscroll, end='\n', text_color=level_colors[level], background_color=level_bg_colors[level])
-        else:
-            echo_str = f"{msg}     [{step:4d} / {max_step:4d}]   "
-            echo_str += "#" * int(step / max_step * 30) + " " * (30 - int(step / max_step * 30))
-            echo_str += "|"
+        echo_str = f"{msg}     [{step:4d} / {max_step:4d}]   "
+        echo_str += "#" * int(step / max_step * 30) + " " * (30 - int(step / max_step * 30)) + "|"
+        if not step == 0:
+            # 直前1行を削除する
             end_pos = self.window["console"].Widget.index(tk.END + '-1c')   # '-1c' means one character before the end, tk.END is the end of the text and it actually does not exist
             end_pos = end_pos.split(".")
             line = int(end_pos[0]) - 1
             widget = self.window['console'].Widget
             widget.delete(f'{line}.0', tk.END + '-1c')
-            sg.cprint(f"{echo_str}", autoscroll=self.autoscroll, end='\n', text_color=level_colors[level], background_color=level_bg_colors[level])
+        sg.cprint(f"{echo_str}", autoscroll=self.autoscroll, end='\n', text_color=level_colors[level], background_color=level_bg_colors[level])
 
     def set_verbosity_level(self, level: str):
         self.verbosity_level = verbosity_levels[level]

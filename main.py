@@ -21,6 +21,10 @@ if __name__ == "__main__":
             log_printer.stop_reading_log()
         elif 'refresh' in main_evt:
             log_printer.refresh_serial_ports()
+        elif 'Clear' in main_evt:  # Clear log window
+            log_printer.clear_console()
+        elif 'Copy' in main_evt:   # Copy log window
+            log_printer.copy_console()
         elif main_evt == 'port':   # Select serial port
             log_printer.port = main_vals['port']
         elif main_evt == 'baudrate':   # Set serial baudrate
