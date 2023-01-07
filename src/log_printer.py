@@ -207,7 +207,10 @@ class LogPrinter():
     def print_log(self, level: str, dt_now: str, line_data: list[str]):
         # echo_str = f"[{dt_now}] {level}\t" + "\t".join(line_data)
         if len(line_data) > 3 and line_data[0] == "TQDM":
-            self.print_processing_bar(level, dt_now, line_data[1], int(line_data[2]), int(line_data[3]))
+            try:
+                self.print_processing_bar(level, dt_now, line_data[1], int(line_data[2]), int(line_data[3]))
+            except:
+                pass
         else:
             echo_str = "\t".join(line_data)
             echo_str = self.align_tab_string(echo_str)
