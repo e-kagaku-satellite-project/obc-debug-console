@@ -201,8 +201,11 @@ class LogPrinter():
         self.window['console'].Widget.clipboard_append(self.window['console'].get())
 
     def save_log(self, level: str, dt_now: str, line_data: list[str]):
-        with open(self.log_src, 'a') as f:
-            f.write(f"{dt_now},{level},{','.join(line_data)}\n")
+        try:
+            with open(self.log_src, 'a') as f:
+                f.write(f"{dt_now},{level},{','.join(line_data)}\n")
+        except:
+            pass
 
     def print_log(self, level: str, dt_now: str, line_data: list[str]):
         # echo_str = f"[{dt_now}] {level}\t" + "\t".join(line_data)
