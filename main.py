@@ -11,8 +11,8 @@ if __name__ == "__main__":
     while True:
         main_evt, main_vals = log_printer.window.read(timeout=1)
 
-        # if event != "__TIMEOUT__":
-        #     print(event)
+        # if main_evt != "__TIMEOUT__":
+        #     print(main_evt)
         if main_evt == sg.WIN_CLOSED or main_evt == 'Exit':
             break
         elif 'open' in main_evt:   # Open serial port
@@ -43,6 +43,8 @@ if __name__ == "__main__":
             log_printer.change_theme(main_vals['cpu'])
         elif main_evt == 'Configure':  # Open configuration window
             config_window = ConfigWindow(log_printer)
+        elif main_evt == 'up-verbosity-level' or main_evt == 'down-verbosity-level':
+            log_printer.change_verbosity_level(main_evt)
 
         # Print telemetry
         if len(log_printer.latest_telems) > 0:

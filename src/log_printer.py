@@ -144,6 +144,8 @@ class LogPrinter():
         self.window.bind("<Control-c>", "close_key")  # Close serial port
         self.window.bind("<Control-r>", "refresh_key")  # Refresh serial port
         self.window.bind("<Control-z>", "Exit")  # Exit
+        self.window.bind("<Control-Up>", 'up-verbosity-level')
+        self.window.bind("<Control-Down>", 'down-verbosity-level')
         sg.cprint_set_output_destination(self.window, 'console')
 
     def refresh_serial_ports(self):
@@ -234,6 +236,18 @@ class LogPrinter():
 
     def set_verbosity_level(self, level: str):
         self.verbosity_level = verbosity_levels[level]
+
+    def change_verbosity_level(self, event_name: str):
+        if event_name == "up-verbosity-level":
+            self.verbosity_level += 1
+            if self.verbosity_level == len(verbosity_levels):
+                self.verbosity_level = 0
+        elif event_name == "down-verbosity-level":
+            self.verbosity_level -= 1
+            if self.verbosity_level < 0:
+                self.verbosity_level = len(verbosity_levels) - 1
+        key = [k for k, v in verbosity_levels.items() if v == self.verbosity_level][0]
+        self.window['level'].update(value=key)
 
     def configure_console(self, font_size, tab_len):
         try:
