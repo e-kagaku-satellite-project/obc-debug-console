@@ -41,6 +41,8 @@ if __name__ == "__main__":
                 log_printer.autoscroll = main_vals['autoscroll']
         elif main_evt == 'cpu':    # Select CPU (Change theme)
             log_printer.change_theme(main_vals['cpu'])
+        elif main_evt == 'select-Main' or main_evt == 'select-Transmit' or main_evt == 'select-Receive':
+            log_printer.change_theme(f"{main_evt[7:]} CPU")
         elif main_evt == 'Configure':  # Open configuration window
             config_window = ConfigWindow(log_printer)
         elif main_evt == 'up-verbosity-level' or main_evt == 'down-verbosity-level':

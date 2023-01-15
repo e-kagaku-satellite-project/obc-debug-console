@@ -139,13 +139,16 @@ class LogPrinter():
         self.window = sg.Window('OBC Debugger', layouts, resizable=True, use_default_focus=False, finalize=True)
 
         # Shortcut-keys
-        self.window.bind('<Control-a>', 'autoscroll_key')
-        self.window.bind("<Control-o>", "open_key")  # Open serial port
-        self.window.bind("<Control-c>", "close_key")  # Close serial port
-        self.window.bind("<Control-r>", "refresh_key")  # Refresh serial port
-        self.window.bind("<Control-z>", "Exit")  # Exit
-        self.window.bind("<Control-Up>", 'up-verbosity-level')
-        self.window.bind("<Control-Down>", 'down-verbosity-level')
+        self.window.bind('<Alt-a>', 'autoscroll_key')
+        self.window.bind("<Alt-o>", "open_key")  # Open serial port
+        self.window.bind("<Alt-c>", "close_key")  # Close serial port
+        self.window.bind("<Alt-r>", "refresh_key")  # Refresh serial port
+        self.window.bind("<Alt-e>", "Exit")  # Exit
+        self.window.bind("<Alt-Up>", 'up-verbosity-level')
+        self.window.bind("<Alt-Down>", 'down-verbosity-level')
+        self.window.bind("<Alt-t>", "select-Transmit")
+        self.window.bind("<Alt-m>", "select-Main")
+        self.window.bind("<Alt-r>", "select-Receive")
         sg.cprint_set_output_destination(self.window, 'console')
 
     def refresh_serial_ports(self):
