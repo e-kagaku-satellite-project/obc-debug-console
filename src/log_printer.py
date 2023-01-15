@@ -218,7 +218,8 @@ class LogPrinter():
         # echo_str = f"[{dt_now}] {level}\t" + "\t".join(line_data)
         if len(line_data) > 3 and line_data[0] == "TQDM":
             try:
-                self.print_processing_bar(level, dt_now, line_data[1], int(line_data[2]), int(line_data[3]))
+                msg_idx = line_data.index("MSG")
+                self.print_processing_bar(level, dt_now, line_data[1:msg_idx], int(line_data[msg_idx + 1]), int(line_data[msg_idx + 2]))
             except:
                 pass
         else:
@@ -228,8 +229,10 @@ class LogPrinter():
         self.window['console'].Widget.tag_raise("sel")
 
     def print_processing_bar(self, level: str, dt_now: str, msg: str, step: int, max_step: int):
-        echo_str = f"{msg}     [{step:4d} / {max_step:4d}]   "
+        echo_str = "\t".join(msg)
+        echo_str += f"\t[{step:4d} / {max_step:4d}]\t"
         echo_str += "#" * int(step / max_step * 30) + " " * (30 - int(step / max_step * 30)) + "|"
+        echo_str = self.align_tab_string(echo_str)
         if not step == 0:
             # 直前1行を削除する
             end_pos = self.window["console"].Widget.index(tk.END + '-1c')   # '-1c' means one character before the end, tk.END is the end of the text and it actually does not exist
