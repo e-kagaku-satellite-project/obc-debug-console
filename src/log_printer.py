@@ -168,6 +168,7 @@ class LogPrinter():
             self.window['port'].update(disabled=True)
             self.window['baudrate'].update(disabled=True)
             self.window['log_src'].update(disabled=True)
+            self.window['cpu'].update(disabled=True)
             self.read_telem_thread = threading.Thread(target=self.read_telemetry, daemon=True)
             self.read_telem_thread.start()
         except serial.serialutil.SerialException as e:
@@ -182,6 +183,7 @@ class LogPrinter():
         self.window['port'].update(disabled=False)
         self.window['baudrate'].update(disabled=False)
         self.window['log_src'].update(disabled=False)
+        self.window['cpu'].update(disabled=False)
         self.is_open_serial = False
 
     def read_telemetry(self):
