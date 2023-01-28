@@ -168,7 +168,7 @@ class LogPrinter():
         self.window.bind("<Control-t>", "select-Transmit")       # Alt-t
         self.window.bind("<Control-m>", "select-Main")       # Alt-m
         self.window.bind("<Control-r>", "select-Receive")        # Alt-r
-        self.window['console'].update(disabled=True)
+        # self.window['console'].update(disabled=True)
         sg.cprint_set_output_destination(self.window, 'console')
 
     def refresh_serial_ports(self):
@@ -262,11 +262,8 @@ class LogPrinter():
         echo_str = self.align_tab_string(echo_str)
         if not step == 0:
             # 直前1行を削除する
-            end_pos = self.window["console"].Widget.index(tk.END + '-1c')   # '-1c' means one character before the end, tk.END is the end of the text and it actually does not exist
-            end_pos = end_pos.split(".")
-            line = int(end_pos[0]) - 1
-            widget = self.window['console'].Widget
-            widget.delete(f'{line}.0', tk.END + '-1c')
+            line_num = float(self.window['console'].Widget.index('end-1c').split('.')[0])
+            self.window['console'].Widget.delete(line_num - 1, line_num)
         sg.cprint(f"{echo_str}", autoscroll=self.autoscroll, end='\n', text_color=level_colors[level], background_color=level_bg_colors[level])
 
     def set_verbosity_level(self, level: str):
