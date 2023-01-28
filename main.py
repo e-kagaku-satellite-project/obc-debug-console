@@ -57,12 +57,11 @@ if __name__ == "__main__":
         # Configuration
         if config_window:
             config_evt, config_vals = config_window.window.read(timeout=1)
-            if config_evt == sg.WIN_CLOSED or config_evt == 'Exit':
+            if config_evt == sg.WIN_CLOSED or config_evt == 'Exit' or config_evt == 'cancel':
                 config_window.window.close()
                 config_window = None
             elif config_evt == 'ok':
-                consol_font_size = config_vals['console_font_size']
-                log_printer.configure_console(config_vals['console_font_size'], config_vals['tab_len'])
+                log_printer.configure_console(config_vals['console_font_size'], config_vals['tab_len'], config_vals['max_console_lines'])
                 config_window.window.close()
                 config_window = None
 

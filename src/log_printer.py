@@ -35,6 +35,24 @@ cpus = ["Main CPU", "Transmit CPU", "Receive CPU"]
 cpu_log_src = {"Main CPU": "log_main_cpu.csv", "Transmit CPU": "log_trans_cpu.csv", "Receive CPU": "log_rcv_cpu.csv"}
 baudrates = [9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600]
 
+default_config = {
+    "Main CPU": {
+        "port": "",
+        "baudrate": 9600,
+    },
+    "Transmit CPU": {
+        "port": "",
+        "baudrate": 9600,
+    },
+    "Receive CPU": {
+        "port": "",
+        "baudrate": 9600,
+    },
+    "tab_len": 6,
+    "console_font_size": 12,
+    "max_console_lines": 10000,
+}
+
 
 def listup_serial_ports():
     devices = list_ports.comports()
@@ -48,19 +66,22 @@ class ConfigWindow():
             [sg.Text('Tab length'), sg.InputText(key='tab_len', default_text=f'{log_printer.tab_len}', size=(5, 1), font=(font_style_window, 12), enable_events=True)],
             [sg.Text('Font size')],
             [sg.Text('    Console'), sg.InputText(key='console_font_size', default_text=f'{log_printer.console_font_size}', size=(5, 1), font=(font_style_window, 12), enable_events=True)],
-            [sg.Button('OK', key='ok'), sg.Button('Cancel', key='cancel')]
+            [sg.Text('Max console lines'), sg.InputText(key='max_console_lines', default_text=f'{log_printer.max_console_lines}', size=(5, 1), font=(font_style_window, 12), enable_events=True)],
+            [sg.Button('OK', key='ok'), sg.Button('Cancel', key='cancel')],
         ]
-        self.window = sg.Window('Configlation', self.layout, resizable=True)
+        self.window = sg.Window('Configlation', self.layout, resizable=True, finalize=True)
+        self.window.bind('<Escape>', 'cancel')
 
 
 class LogPrinter():
     def __init__(self):
         self.cpu = 'Main CPU'
+        self.serial = None
+        self.pattern_tm = re.compile(r"(DEBUG,|INFO,|WARN,|ERROR,|FATAL,)(.*)\n")
         sg.theme(themes[self.cpu])
         self.create_config_file()
         config = self.load_config()
         self.create_window(config)
-        self.pattern_tm = re.compile(r"(DEBUG,|INFO,|WARN,|ERROR,|FATAL,)(.*)\n")
 
     def __del__(self):
         self.window.close()
@@ -76,30 +97,24 @@ class LogPrinter():
     def create_config_file(self):
         if not os.path.isfile("./config/config.json"):
             os.makedirs("./config", exist_ok=True)
-            config = {
-                "Main CPU": {
-                    "port": "",
-                    "baudrate": 9600,
-                },
-                "Transmit CPU": {
-                    "port": "",
-                    "baudrate": 9600,
-                },
-                "Receive CPU": {
-                    "port": "",
-                    "baudrate": 9600,
-                },
-                "tab_len": 6,
-                "console_font_size": 12
-            }
             with open("./config/config.json", "w") as f:
-                json.dump(config, f, indent=4)
+                json.dump(default_config, f, indent=4)
 
     def load_config(self):
         with open('./config/config.json', 'r') as f:
             config = json.load(f)
-        self.tab_len = config['tab_len']
-        self.console_font_size = config['console_font_size']
+        if 'tab_len' in config:
+            self.tab_len = config['tab_len']
+        else:
+            self.tab_len = default_config['tab_len']
+        if 'console_font_size' in config:
+            self.console_font_size = config['console_font_size']
+        else:
+            self.console_font_size = default_config['console_font_size']
+        if 'max_console_lines' in config:
+            self.max_console_lines = config['max_console_lines']
+        else:
+            self.max_console_lines = default_config['max_console_lines']
         return config
 
     def update_config(self, *args, **kwargs):
@@ -135,20 +150,20 @@ class LogPrinter():
         self.verbosity_level = list(verbosity_levels.values())[0]
         self.latest_telems = []  # バッファとして機能するようにリストにした，FIFO形式
         self.autoscroll = True
-        self.is_open_serial = False
+        self.is_serial_opened = False
         self.window = sg.Window('OBC Debugger', layouts, resizable=True, use_default_focus=False, finalize=True)
 
         # Shortcut-keys
-        self.window.bind('<Alt-a>', 'autoscroll_key')
-        self.window.bind("<Alt-o>", "open_key")  # Open serial port
-        self.window.bind("<Alt-c>", "close_key")  # Close serial port
-        self.window.bind("<Alt-r>", "refresh_key")  # Refresh serial port
-        self.window.bind("<Alt-e>", "Exit")  # Exit
-        self.window.bind("<Alt-Up>", 'up-verbosity-level')
-        self.window.bind("<Alt-Down>", 'down-verbosity-level')
-        self.window.bind("<Alt-t>", "select-Transmit")
-        self.window.bind("<Alt-m>", "select-Main")
-        self.window.bind("<Alt-r>", "select-Receive")
+        self.window.bind('<Shift-A>', 'autoscroll_key')        # Alt-a
+        self.window.bind("<Shift-O>", "open_key")  # Open serial port      # Alt-o
+        self.window.bind("<Shift-C>", "close_key")  # Close serial port        # Alt-c
+        self.window.bind("<Shift-R>", "refresh_key")  # Refresh serial port        # Alt-r
+        self.window.bind("<Shift-E>", "Exit")  # Exit      # Alt-e
+        self.window.bind("<Shift-Up>", 'up-verbosity-level')        # Alt-Up
+        self.window.bind("<Shift-Down>", 'down-verbosity-level')      # Alt-Down
+        self.window.bind("<Control-t>", "select-Transmit")       # Alt-t
+        self.window.bind("<Control-m>", "select-Main")       # Alt-m
+        self.window.bind("<Control-r>", "select-Receive")        # Alt-r
         sg.cprint_set_output_destination(self.window, 'console')
 
     def refresh_serial_ports(self):
@@ -158,7 +173,9 @@ class LogPrinter():
         self.window['port'].update(values=ports, value=self.port)
 
     def start_reading_log(self):
-        self.is_open_serial = True
+        if self.is_serial_opened:
+            return
+        self.is_serial_opened = True
         self.latest_telems = []
         try:
             self.serial = serial.Serial(self.port, self.baudrate)
@@ -173,7 +190,7 @@ class LogPrinter():
             self.read_telem_thread.start()
         except serial.serialutil.SerialException as e:
             self.serial = None
-            sg.popup(f'{e}', title='Failed to open serial port', keep_on_top=True, image="./img/yoshiiii.png", font=(font_style_popup, 12))
+            sg.popup(f'{e}', title='Failed to open serial port', keep_on_top=True, font=(font_style_popup, 12))
             self.stop_reading_log()
 
     def stop_reading_log(self):
@@ -184,10 +201,10 @@ class LogPrinter():
         self.window['baudrate'].update(disabled=False)
         self.window['log_src'].update(disabled=False)
         self.window['cpu'].update(disabled=False)
-        self.is_open_serial = False
+        self.is_serial_opened = False
 
     def read_telemetry(self):
-        while self.is_open_serial:
+        while self.is_serial_opened:
             try:    # 見えぬバグ ifで消した 午前2時
                 byte_data = self.serial.readline()
             except:   # serial port closed
@@ -226,6 +243,11 @@ class LogPrinter():
             echo_str = "\t".join(line_data)
             echo_str = self.align_tab_string(echo_str)
             sg.cprint(f"{echo_str}", autoscroll=self.autoscroll, end='\n', text_color=level_colors[level], background_color=level_bg_colors[level])
+
+        # If the number of lines is over self.max_console_lines, delete the first line
+        over_line_num = float(self.window['console'].Widget.index('end-1c').split('.')[0]) - self.max_console_lines
+        if over_line_num > 0:
+            self.window['console'].Widget.delete(1.0, over_line_num + 1)
         self.window['console'].Widget.tag_raise("sel")
 
     def print_processing_bar(self, level: str, dt_now: str, msg: str, step: int, max_step: int):
@@ -257,16 +279,16 @@ class LogPrinter():
         key = [k for k, v in verbosity_levels.items() if v == self.verbosity_level][0]
         self.window['level'].update(value=key)
 
-    def configure_console(self, font_size, tab_len):
-        try:
+    def configure_console(self, font_size: str, tab_len: str, max_console_lines: str):
+        if font_size.isdecimal():
             self.console_font_size = int(font_size)
             self.window['console'].update(font=(font_style_console, self.console_font_size))
-        except:
-            pass
-        try:
+        if tab_len.isdecimal():
             self.tab_len = int(tab_len)
-        except:
-            pass
+        if max_console_lines.isdecimal():
+            self.max_console_lines = int(max_console_lines)
+        self.update_config(tab_len=self.tab_len, max_console_lines=self.max_console_lines, console_font_size=self.console_font_size)
+        self.load_config()
 
     def align_tab_string(self, text: str):
         strs_between_tabs = re.split('\t', text)
