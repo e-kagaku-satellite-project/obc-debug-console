@@ -1,5 +1,6 @@
 
 from __future__ import annotations
+import base64
 import datetime
 import json
 import os
@@ -69,7 +70,7 @@ class ConfigWindow():
             [sg.Text('Max console lines'), sg.InputText(key='max_console_lines', default_text=f'{log_printer.max_console_lines}', size=(5, 1), font=(font_style_window, 12), enable_events=True)],
             [sg.Button('OK', key='ok'), sg.Button('Cancel', key='cancel')],
         ]
-        self.window = sg.Window('Configlation', self.layout, resizable=True, finalize=True)
+        self.window = sg.Window('Configlation', self.layout, resizable=True, finalize=True, icon="img/icon.png")
         self.window.bind('<Escape>', 'cancel')
 
 
@@ -151,7 +152,10 @@ class LogPrinter():
         self.latest_telems = []  # バッファとして機能するようにリストにした，FIFO形式
         self.autoscroll = True
         self.is_serial_opened = False
-        self.window = sg.Window('OBC Debugger', layouts, resizable=True, use_default_focus=False, finalize=True)
+        with open("./img/icon.png", "rb") as f:
+            img = f.read()
+        img_base64 = base64.b64encode(img)
+        self.window = sg.Window('OBC Debugger', layouts, icon=img_base64, resizable=True, use_default_focus=False, finalize=True)
 
         # Shortcut-keys
         self.window.bind('<Shift-A>', 'autoscroll_key')        # Alt-a
