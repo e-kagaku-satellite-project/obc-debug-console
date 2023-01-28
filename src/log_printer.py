@@ -168,6 +168,7 @@ class LogPrinter():
         self.window.bind("<Control-t>", "select-Transmit")       # Alt-t
         self.window.bind("<Control-m>", "select-Main")       # Alt-m
         self.window.bind("<Control-r>", "select-Receive")        # Alt-r
+        self.window['console'].update(disabled=True)
         sg.cprint_set_output_destination(self.window, 'console')
 
     def refresh_serial_ports(self):
