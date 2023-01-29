@@ -9,7 +9,6 @@ import serial
 import threading
 import PySimpleGUI as sg
 from serial.tools import list_ports
-import tkinter as tk
 
 level_colors = {
     'DEBUG': None,  # white
@@ -78,6 +77,7 @@ class LogPrinter():
     def __init__(self):
         self.cpu = 'Main CPU'
         self.serial = None
+        self.is_prev_tqdm = False
         self.pattern_tm = re.compile(r"(DEBUG,|INFO,|WARN,|ERROR,|FATAL,)(.*)\n")
         sg.theme(themes[self.cpu])
         self.create_config_file()
@@ -128,6 +128,7 @@ class LogPrinter():
     def create_window(self, config: dict) -> sg.Window:
         ports = listup_serial_ports()
         self.port = config[self.cpu]['port'] if config[self.cpu]['port'] in ports else ports[0]
+        self.log_src = cpu_log_src[self.cpu]
         menubar = sg.MenuBar([['File', ['Configure', 'Exit']], ['Console', ['Clear', 'Copy']]])
         cpu_cmbbox = sg.Combo(cpus, default_value=self.cpu, size=(15, 1), key='cpu', font=(font_style_window, 16), enable_events=True, readonly=True)
         port_cmbbox = sg.Combo(ports, default_value=self.port, key='port', size=(20, 1), enable_events=True, readonly=True)
@@ -136,7 +137,6 @@ class LogPrinter():
         open_btn = sg.Button('Open', key='open')
         close_btn = sg.Button('Close', key='close', disabled=True)
         refresh_btn = sg.Button('Refresh', key='refresh', enable_events=True)
-        self.log_src = cpu_log_src[self.cpu]
         log_src_txt = sg.InputText(key='log_src', default_text=self.log_src, size=(30, 1), font=(font_style_window, 12), enable_events=True)
         console_mtl = sg.Multiline(size=(80, 25), font=(font_style_console, self.console_font_size), expand_x=True, expand_y=True, key='console', background_color='#000000', horizontal_scroll=True)
         autoscroll_chkbox = sg.Checkbox('Auto scroll', key='autoscroll', default=True, enable_events=True)
@@ -168,7 +168,7 @@ class LogPrinter():
         self.window.bind("<Control-t>", "select-Transmit")       # Alt-t
         self.window.bind("<Control-m>", "select-Main")       # Alt-m
         self.window.bind("<Control-r>", "select-Receive")        # Alt-r
-        # self.window['console'].update(disabled=True)
+        self.window['console'].update(disabled=True)
         sg.cprint_set_output_destination(self.window, 'console')
 
     def refresh_serial_ports(self):
@@ -239,20 +239,21 @@ class LogPrinter():
     def print_log(self, level: str, dt_now: str, line_data: list[str]):
         # echo_str = f"[{dt_now}] {level}\t" + "\t".join(line_data)
         if len(line_data) > 3 and line_data[0] == "TQDM":
-            try:
-                msg_idx = line_data.index("MSG")
-                self.print_processing_bar(level, dt_now, line_data[1:msg_idx], int(line_data[msg_idx + 1]), int(line_data[msg_idx + 2]))
-            except:
-                pass
+            msg_idx = line_data.index("MSG")
+            self.print_processing_bar(level, dt_now, line_data[1:msg_idx], int(line_data[msg_idx + 1]), int(line_data[msg_idx + 2]))
+            self.is_prev_tqdm = True
         else:
             echo_str = "\t".join(line_data)
             echo_str = self.align_tab_string(echo_str)
+            self.is_prev_tqdm = False
             sg.cprint(f"{echo_str}", autoscroll=self.autoscroll, end='\n', text_color=level_colors[level], background_color=level_bg_colors[level])
 
         # If the number of lines is over self.max_console_lines, delete the first line
         over_line_num = float(self.window['console'].Widget.index('end-1c').split('.')[0]) - self.max_console_lines
         if over_line_num > 0:
+            self.window['console'].update(disabled=False)
             self.window['console'].Widget.delete(1.0, over_line_num + 1)
+            self.window['console'].update(disabled=True)
         self.window['console'].Widget.tag_raise("sel")
 
     def print_processing_bar(self, level: str, dt_now: str, msg: str, step: int, max_step: int):
@@ -260,10 +261,12 @@ class LogPrinter():
         echo_str += f"\t[{step:4d} / {max_step:4d}]\t"
         echo_str += "#" * int(step / max_step * 30) + " " * (30 - int(step / max_step * 30)) + "|"
         echo_str = self.align_tab_string(echo_str)
-        if not step == 0:
+        if self.is_prev_tqdm:
             # 直前1行を削除する
             line_num = float(self.window['console'].Widget.index('end-1c').split('.')[0])
+            self.window['console'].update(disabled=False)
             self.window['console'].Widget.delete(line_num - 1, line_num)
+            self.window['console'].update(disabled=True)
         sg.cprint(f"{echo_str}", autoscroll=self.autoscroll, end='\n', text_color=level_colors[level], background_color=level_bg_colors[level])
 
     def set_verbosity_level(self, level: str):
