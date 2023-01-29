@@ -2,7 +2,6 @@ from __future__ import annotations
 import PySimpleGUI as sg
 from src.log_printer import ConfigWindow, LogPrinter
 
-
 if __name__ == "__main__":
     log_printer = LogPrinter()
     config_window = None
@@ -66,12 +65,15 @@ if __name__ == "__main__":
                 config_window = None
 
         # if cnt < max_cnt + 1:
-        #     log_printer.print_processing_bar("INFO", None, "Test", cnt, max_cnt)
+        #     log_printer.latest_telems.append(["INFO", None, ["TQDM", "Test", "MSG", f"{cnt}", f"{max_cnt}"]])
         #     cnt += 1
+        #     time.sleep(0.01)
         # elif cnt == max_cnt + 1:
-        #     log_printer.print_log("ERROR", None, ["Test"])
-        #     log_printer.print_log("INFO", None, ["Test"])
-        #     log_printer.print_log("DEBUG", None, ["Test"])
-        #     cnt += 1
-        # elif cnt > max_cnt + 1:
+        #     log_printer.latest_telems.append(["FATAL", None, ["TEST"]])
+        #     log_printer.latest_telems.append(["ERROR", None, ["TEST"]])
+        #     log_printer.latest_telems.append(["WARN", None, ["TEST"]])
+        #     log_printer.latest_telems.append(["INFO", None, ["TEST"]])
+        #     log_printer.latest_telems.append(["DEBUG", None, ["TEST"]])
+        #     cnt = 0
+        # elif cnt > max_cnt + 2:
         #     cnt = 0
