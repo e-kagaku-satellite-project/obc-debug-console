@@ -11,7 +11,7 @@ import PySimpleGUI as sg
 from serial.tools import list_ports
 
 level_colors = {
-    'DEBUG': None,  # white
+    'DEBUG': '#FFFFFF',  # white
     'INFO': '#00FF00',  # Green
     'WARN': '#FFE000',  # Orange(Yellow)
     'ERROR': '#FF0000',  # Red
@@ -53,6 +53,8 @@ default_config = {
     "max_console_lines": 10000,
 }
 
+ICON_IMG_SRC = "img/icon.png"
+
 
 def listup_serial_ports():
     devices = list_ports.comports()
@@ -60,16 +62,25 @@ def listup_serial_ports():
     return ports
 
 
+def imgToBase64(img_src):
+    with open(img_src, "rb") as f:
+        img = f.read()
+    return base64.b64encode(img)
+
+
 class ConfigWindow():
     def __init__(self, log_printer: LogPrinter):
-        self.layout = [
+        col = [
             [sg.Text('Tab length'), sg.InputText(key='tab_len', default_text=f'{log_printer.tab_len}', size=(5, 1), font=(font_style_window, 12), enable_events=True)],
             [sg.Text('Font size')],
             [sg.Text('    Console'), sg.InputText(key='console_font_size', default_text=f'{log_printer.console_font_size}', size=(5, 1), font=(font_style_window, 12), enable_events=True)],
-            [sg.Text('Max console lines'), sg.InputText(key='max_console_lines', default_text=f'{log_printer.max_console_lines}', size=(5, 1), font=(font_style_window, 12), enable_events=True)],
-            [sg.Button('OK', key='ok'), sg.Button('Cancel', key='cancel')],
+            [sg.Text('Scrollback'), sg.InputText(key='max_console_lines', default_text=f'{log_printer.max_console_lines}', size=(8, 1), font=(font_style_window, 12), enable_events=True), sg.Text('lines')],
         ]
-        self.window = sg.Window('Configlation', self.layout, resizable=True, finalize=True, icon="img/icon.png")
+        self.layout = [
+            [sg.Column(col)],
+            [sg.Column([[sg.Button('OK', key='ok'), sg.Button('Cancel', key='cancel')]], justification='c')],
+        ]
+        self.window = sg.Window('Configuration', self.layout, resizable=True, finalize=True, icon=imgToBase64(ICON_IMG_SRC))
         self.window.bind('<Escape>', 'cancel')
 
 
@@ -116,6 +127,7 @@ class LogPrinter():
             self.max_console_lines = config['max_console_lines']
         else:
             self.max_console_lines = default_config['max_console_lines']
+        self.baudrate = config[self.cpu]['baudrate']
         return config
 
     def update_config(self, *args, **kwargs):
@@ -129,6 +141,25 @@ class LogPrinter():
         ports = listup_serial_ports()
         self.port = config[self.cpu]['port'] if config[self.cpu]['port'] in ports else ports[0]
         self.log_src = cpu_log_src[self.cpu]
+        self.verbosity_level = list(verbosity_levels.values())[0]
+        self.latest_telems = []  # バッファとして機能するようにリストにした，FIFO形式
+        self.autoscroll = True
+        self.is_serial_opened = False
+
+        self.window = sg.Window(
+            'OBC Debugger',
+            self.layouts(ports),
+            icon=imgToBase64(ICON_IMG_SRC),
+            resizable=True,
+            use_default_focus=False,
+            finalize=True
+        )
+        self.window.force_focus()
+        self.window['console'].update(disabled=True)
+        self.bind_shortcutkeys()
+        sg.cprint_set_output_destination(self.window, 'console')
+
+    def layouts(self, ports):
         menubar = sg.MenuBar([['File', ['Configure', 'Exit']], ['Console', ['Clear', 'Copy']]])
         cpu_cmbbox = sg.Combo(cpus, default_value=self.cpu, size=(15, 1), key='cpu', font=(font_style_window, 16), enable_events=True, readonly=True)
         port_cmbbox = sg.Combo(ports, default_value=self.port, key='port', size=(20, 1), enable_events=True, readonly=True)
@@ -144,20 +175,11 @@ class LogPrinter():
             [menubar],
             [cpu_cmbbox, log_src_txt, autoscroll_chkbox],
             [port_cmbbox, baudrate_cmbbox, level_cmbbox, open_btn, close_btn, refresh_btn],
-            [console_mtl],
-            # [sg.Image(r'./img/background.png')]
+            [console_mtl]
         ]
-        self.baudrate = baudrates[0]
-        self.verbosity_level = list(verbosity_levels.values())[0]
-        self.latest_telems = []  # バッファとして機能するようにリストにした，FIFO形式
-        self.autoscroll = True
-        self.is_serial_opened = False
-        with open("./img/icon.png", "rb") as f:
-            img = f.read()
-        img_base64 = base64.b64encode(img)
-        self.window = sg.Window('OBC Debugger', layouts, icon=img_base64, resizable=True, use_default_focus=False, finalize=True)
+        return layouts
 
-        # Shortcut-keys
+    def bind_shortcutkeys(self):
         self.window.bind('<Shift-A>', 'autoscroll_key')        # Alt-a
         self.window.bind("<Shift-O>", "open_key")  # Open serial port      # Alt-o
         self.window.bind("<Shift-C>", "close_key")  # Close serial port        # Alt-c
@@ -168,8 +190,6 @@ class LogPrinter():
         self.window.bind("<Control-t>", "select-Transmit")       # Alt-t
         self.window.bind("<Control-m>", "select-Main")       # Alt-m
         self.window.bind("<Control-r>", "select-Receive")        # Alt-r
-        self.window['console'].update(disabled=True)
-        sg.cprint_set_output_destination(self.window, 'console')
 
     def refresh_serial_ports(self):
         ports = listup_serial_ports()
