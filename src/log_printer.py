@@ -274,6 +274,7 @@ class LogPrinter():
 
     def print_log(self, level: str, dt_now: str, line_data: list[str]):
         # echo_str = f"[{dt_now}] {level}\t" + "\t".join(line_data)
+        line_data = [l.replace('\x00', '') for l in line_data]
         if len(line_data) > 3 and line_data[0] == "TQDM":
             if "MSG" in line_data:
                 msg_idx = line_data.index("MSG")
@@ -290,6 +291,8 @@ class LogPrinter():
             echo_str = "\t".join(line_data)
             echo_str = self.align_tab_string(echo_str)
             self.is_prev_tqdm = False
+            print(echo_str)
+            print(f"{line_data}")
             sg.cprint(f"{echo_str}", autoscroll=self.autoscroll, end='\n', text_color=level_colors[level], background_color=level_bg_colors[level])
 
         # If the number of lines is over self.max_console_lines, delete the first line

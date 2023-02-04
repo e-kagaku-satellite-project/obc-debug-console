@@ -32,7 +32,7 @@ if __name__ == "__main__":
             log_printer.set_verbosity_level(main_vals['level'])
         elif main_evt == 'log_src':    # Set log file path
             log_printer.log_src = main_vals['log_src']
-        elif 'autoscroll' == main_evt:  # Change autoscroll enable or not
+        elif 'autoscroll' == main_evt or 'autoscroll_key' == main_evt:  # Change autoscroll enable or not
             if main_evt == 'autoscroll_key':
                 log_printer.window['autoscroll'].update(not main_vals['autoscroll'])
                 log_printer.autoscroll = not main_vals['autoscroll']
