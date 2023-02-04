@@ -271,6 +271,7 @@ class LogPrinter():
                 msg_idx = line_data.index("MSG")
             else:
                 logging.warn(f'{datetime.datetime.now()},{self.cpu},MSG is not in line_data,{line_data}')
+                return
             self.print_processing_bar(level, dt_now, line_data[1:msg_idx], int(line_data[msg_idx + 1]), int(line_data[msg_idx + 2]))
             self.is_prev_tqdm = True
         else:
@@ -289,6 +290,9 @@ class LogPrinter():
 
     def print_processing_bar(self, level: str, dt_now: str, msg: str, step: int, max_step: int):
         echo_str = "\t".join(msg)
+        if max_step == 0:
+            logging.warn(f'{datetime.datetime.now()},{self.cpu},max_step is 0,{level},{msg},{step},{max_step}')
+            return
         echo_str += f"\t[{step:4d} / {max_step:4d}]\t"
         echo_str += "#" * int(step / max_step * 30) + " " * (30 - int(step / max_step * 30)) + "|"
         echo_str = self.align_tab_string(echo_str)
