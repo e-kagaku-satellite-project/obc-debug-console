@@ -9,6 +9,7 @@ import logging
 import os
 import re
 import serial
+import subprocess
 import threading
 import PySimpleGUI as sg
 from serial.tools import list_ports
@@ -196,6 +197,7 @@ class LogPrinter():
         self.window.bind("<Control-t>", "select-Transmit")       # Alt-t
         self.window.bind("<Control-m>", "select-Main")       # Alt-m
         self.window.bind("<Control-r>", "select-Receive")        # Alt-r
+        self.window.bind("<Control-n>", "open-new-console")
 
     def refresh_serial_ports(self):
         ports = listup_serial_ports()
@@ -272,7 +274,11 @@ class LogPrinter():
             else:
                 logging.warn(f'{datetime.datetime.now()},{self.cpu},MSG is not in line_data,{line_data}')
                 return
-            self.print_processing_bar(level, dt_now, line_data[1:msg_idx], int(line_data[msg_idx + 1]), int(line_data[msg_idx + 2]))
+            try:
+                self.print_processing_bar(level, dt_now, line_data[1:msg_idx], int(line_data[msg_idx + 1]), int(line_data[msg_idx + 2]))
+            except:
+                logging.error(f'{datetime.datetime.now()},{self.cpu},int(line_data),{line_data}')
+                return
             self.is_prev_tqdm = True
         else:
             echo_str = "\t".join(line_data)
@@ -318,6 +324,9 @@ class LogPrinter():
                 self.verbosity_level = len(verbosity_levels) - 1
         key = [k for k, v in verbosity_levels.items() if v == self.verbosity_level][0]
         self.window['level'].update(value=key)
+
+    def open_new_console(self):
+        subprocess.Popen('./obc-debug-console.exe')
 
     def configure_console(self, font_size: str, tab_len: str, max_console_lines: str):
         if font_size.isdecimal():

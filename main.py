@@ -14,15 +14,15 @@ if __name__ == "__main__":
         #     print(main_evt)
         if main_evt == sg.WIN_CLOSED or main_evt == 'Exit':
             break
-        elif 'open' in main_evt:   # Open serial port
+        elif 'open' == main_evt:   # Open serial port
             log_printer.start_reading_log()
-        elif 'close' in main_evt:  # Close serial port
+        elif 'close' == main_evt:  # Close serial port
             log_printer.stop_reading_log()
-        elif 'refresh' in main_evt:
+        elif 'refresh' == main_evt:
             log_printer.refresh_serial_ports()
-        elif 'Clear' in main_evt:  # Clear log window
+        elif 'Clear' == main_evt:  # Clear log window
             log_printer.clear_console()
-        elif 'Copy' in main_evt:   # Copy log window
+        elif 'Copy' == main_evt:   # Copy log window
             log_printer.copy_console()
         elif main_evt == 'port':   # Select serial port
             log_printer.port = main_vals['port']
@@ -32,7 +32,7 @@ if __name__ == "__main__":
             log_printer.set_verbosity_level(main_vals['level'])
         elif main_evt == 'log_src':    # Set log file path
             log_printer.log_src = main_vals['log_src']
-        elif 'autoscroll' in main_evt:  # Change autoscroll enable or not
+        elif 'autoscroll' == main_evt:  # Change autoscroll enable or not
             if main_evt == 'autoscroll_key':
                 log_printer.window['autoscroll'].update(not main_vals['autoscroll'])
                 log_printer.autoscroll = not main_vals['autoscroll']
@@ -46,6 +46,8 @@ if __name__ == "__main__":
             config_window = ConfigWindow(log_printer)
         elif main_evt == 'up-verbosity-level' or main_evt == 'down-verbosity-level':
             log_printer.change_verbosity_level(main_evt)
+        elif main_evt == 'open-new-console':
+            log_printer.open_new_console()
 
         # Print telemetry
         if len(log_printer.latest_telems) > 0:
