@@ -6,3 +6,4 @@ config
 *.spec
 *.txt
 *.csv
+*.log

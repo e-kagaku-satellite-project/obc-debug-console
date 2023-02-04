@@ -1,14 +1,20 @@
+#!/usr/bin/env python3
+# coding:utf-8
 
 from __future__ import annotations
 import base64
 import datetime
 import json
+import logging
 import os
 import re
 import serial
 import threading
 import PySimpleGUI as sg
 from serial.tools import list_ports
+
+os.makedirs('./log', exist_ok=True)
+logging.basicConfig(filename='./log/odc_system.log', level=logging.DEBUG)
 
 level_colors = {
     'DEBUG': '#FFFFFF',  # white
@@ -217,6 +223,7 @@ class LogPrinter():
         except serial.serialutil.SerialException as e:
             self.serial = None
             sg.popup(f'{e}', title='Failed to open serial port', keep_on_top=True, font=(font_style_popup, 12))
+            logging.error(f'{datetime.datetime.now()},{self.cpu},{e}')
             self.stop_reading_log()
 
     def stop_reading_log(self):
@@ -233,8 +240,8 @@ class LogPrinter():
         while self.is_serial_opened:
             try:    # 見えぬバグ ifで消した 午前2時
                 byte_data = self.serial.readline()
-            except:   # serial port closed
-                break
+            except Exception as e:
+                logging.error(f'{datetime.datetime.now()},{self.cpu},{e}')
             str_data = byte_data.decode(errors='ignore')
             re_result = self.pattern_tm.match(str_data)
             if re_result:
@@ -254,13 +261,16 @@ class LogPrinter():
         try:
             with open(self.log_src, 'a') as f:
                 f.write(f"{dt_now},{level},{','.join(line_data)}\n")
-        except:
-            pass
+        except Exception as e:
+            logging.error(f'{datetime.datetime.now()},{self.cpu},{e}')
 
     def print_log(self, level: str, dt_now: str, line_data: list[str]):
         # echo_str = f"[{dt_now}] {level}\t" + "\t".join(line_data)
         if len(line_data) > 3 and line_data[0] == "TQDM":
-            msg_idx = line_data.index("MSG")
+            if "MSG" in line_data:
+                msg_idx = line_data.index("MSG")
+            else:
+                logging.warn(f'{datetime.datetime.now()},{self.cpu},MSG is not in line_data,{line_data}')
             self.print_processing_bar(level, dt_now, line_data[1:msg_idx], int(line_data[msg_idx + 1]), int(line_data[msg_idx + 2]))
             self.is_prev_tqdm = True
         else:
@@ -319,7 +329,7 @@ class LogPrinter():
     def align_tab_string(self, text: str):
         strs_between_tabs = re.split('\t', text)
         final_strs = ""
-        for i, s in enumerate(strs_between_tabs):
+        for s in strs_between_tabs:
             final_strs += s + ' ' * (self.tab_len - len(s) % self.tab_len)
             final_strs += '    'if len(s) % self.tab_len == 0 else ''
         return final_strs
