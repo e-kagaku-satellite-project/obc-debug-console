@@ -14,11 +14,11 @@ if __name__ == "__main__":
         #     print(main_evt)
         if main_evt == sg.WIN_CLOSED or main_evt == 'Exit':
             break
-        elif 'open' == main_evt:   # Open serial port
+        elif 'open' == main_evt or 'open_key' == main_evt:   # Open serial port
             log_printer.start_reading_log()
-        elif 'close' == main_evt:  # Close serial port
+        elif 'close' == main_evt or 'close_key' == main_evt:  # Close serial port
             log_printer.stop_reading_log()
-        elif 'refresh' == main_evt:
+        elif 'refresh' == main_evt or 'refresh_key' == main_evt:
             log_printer.refresh_serial_ports()
         elif 'Clear' == main_evt:  # Clear log window
             log_printer.clear_console()

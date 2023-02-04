@@ -225,7 +225,7 @@ class LogPrinter():
         except serial.serialutil.SerialException as e:
             self.serial = None
             sg.popup(f'{e}', title='Failed to open serial port', keep_on_top=True, font=(font_style_popup, 12))
-            logging.error(f'{datetime.datetime.now()},{self.cpu},{e}')
+            logging.error(f'{datetime.datetime.now()}:{self.cpu}:{e}')
             self.stop_reading_log()
 
     def stop_reading_log(self):
@@ -242,8 +242,14 @@ class LogPrinter():
         while self.is_serial_opened:
             try:    # 見えぬバグ ifで消した 午前2時
                 byte_data = self.serial.readline()
+            except serial.SerialException:  # "ReadFile failed (OSError(9, 'ハンドルが無効です。', None, 6))" will be raised when closing the serial port
+                pass
+            except AttributeError:  # "'NoneType' object has no attribute 'hEvent'" will be raised when closing the serial port
+                pass
+            except TypeError:   # "byref() argument must be a ctypes instance, not 'NoneType'" will be raised when closing the serial port
+                pass
             except Exception as e:
-                logging.error(f'{datetime.datetime.now()},{self.cpu},{e}')
+                logging.error(f'{datetime.datetime.now()}:read_telemetry:{self.cpu}:{e}')
             str_data = byte_data.decode(errors='ignore')
             re_result = self.pattern_tm.match(str_data)
             if re_result:
@@ -264,7 +270,7 @@ class LogPrinter():
             with open(self.log_src, 'a') as f:
                 f.write(f"{dt_now},{level},{','.join(line_data)}\n")
         except Exception as e:
-            logging.error(f'{datetime.datetime.now()},{self.cpu},{e}')
+            logging.error(f'{datetime.datetime.now()}:save_log:{self.cpu}:{e}')
 
     def print_log(self, level: str, dt_now: str, line_data: list[str]):
         # echo_str = f"[{dt_now}] {level}\t" + "\t".join(line_data)
@@ -272,12 +278,12 @@ class LogPrinter():
             if "MSG" in line_data:
                 msg_idx = line_data.index("MSG")
             else:
-                logging.warn(f'{datetime.datetime.now()},{self.cpu},MSG is not in line_data,{line_data}')
+                logging.warn(f'{datetime.datetime.now()}:{self.cpu}:MSG is not in line_data,{line_data}')
                 return
             try:
                 self.print_processing_bar(level, dt_now, line_data[1:msg_idx], int(line_data[msg_idx + 1]), int(line_data[msg_idx + 2]))
             except:
-                logging.error(f'{datetime.datetime.now()},{self.cpu},int(line_data),{line_data}')
+                logging.error(f'{datetime.datetime.now()}:print_log:{self.cpu}:{line_data}')
                 return
             self.is_prev_tqdm = True
         else:
@@ -297,7 +303,7 @@ class LogPrinter():
     def print_processing_bar(self, level: str, dt_now: str, msg: str, step: int, max_step: int):
         echo_str = "\t".join(msg)
         if max_step == 0:
-            logging.warn(f'{datetime.datetime.now()},{self.cpu},max_step is 0,{level},{msg},{step},{max_step}')
+            logging.warn(f'{datetime.datetime.now()}:{self.cpu}:max_step is 0:{level}:{msg}:{step}:{max_step}')
             return
         echo_str += f"\t[{step:4d} / {max_step:4d}]\t"
         echo_str += "#" * int(step / max_step * 30) + " " * (30 - int(step / max_step * 30)) + "|"
