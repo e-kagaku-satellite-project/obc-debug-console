@@ -62,7 +62,7 @@ def listup_serial_ports():
     return ports
 
 
-def imgToBase64(img_src):
+def img_to_base64(img_src):
     with open(img_src, "rb") as f:
         img = f.read()
     return base64.b64encode(img)
@@ -80,7 +80,7 @@ class ConfigWindow():
             [sg.Column(col)],
             [sg.Column([[sg.Button('OK', key='ok'), sg.Button('Cancel', key='cancel')]], justification='c')],
         ]
-        self.window = sg.Window('Configuration', self.layout, resizable=True, finalize=True, icon=imgToBase64(ICON_IMG_SRC))
+        self.window = sg.Window('Configuration', self.layout, resizable=True, finalize=True, icon=img_to_base64(ICON_IMG_SRC))
         self.window.bind('<Escape>', 'cancel')
 
 
@@ -149,7 +149,7 @@ class LogPrinter():
         self.window = sg.Window(
             'OBC Debugger',
             self.layouts(ports),
-            icon=imgToBase64(ICON_IMG_SRC),
+            icon=img_to_base64(ICON_IMG_SRC),
             resizable=True,
             use_default_focus=False,
             finalize=True
@@ -211,6 +211,7 @@ class LogPrinter():
             self.window['baudrate'].update(disabled=True)
             self.window['log_src'].update(disabled=True)
             self.window['cpu'].update(disabled=True)
+            self.log_src = self.window['log_src'].get()
             self.read_telem_thread = threading.Thread(target=self.read_telemetry, daemon=True)
             self.read_telem_thread.start()
         except serial.serialutil.SerialException as e:
