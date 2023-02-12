@@ -39,7 +39,7 @@ font_style_popup = 'Helvetica'
 themes = {'Main CPU': 'Dark', 'Transmit CPU': 'DarkBlue', 'Receive CPU': 'DarkAmber'}
 verbosity_levels = {'DEBUG': 0, 'INFO': 1, 'WARN': 2, 'ERROR': 3, 'FATAL': 4, 'NONE': 5}
 cpus = ["Main CPU", "Transmit CPU", "Receive CPU"]
-cpu_log_src = {"Main CPU": "log_main_cpu.csv", "Transmit CPU": "log_trans_cpu.csv", "Receive CPU": "log_rcv_cpu.csv"}
+cpu_log_src = {"Main CPU": "./log/log_main_cpu.csv", "Transmit CPU": "./log/log_trans_cpu.csv", "Receive CPU": "./log/log_rcv_cpu.csv"}
 baudrates = [9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600]
 
 default_config = {
@@ -256,7 +256,9 @@ class LogPrinter():
                 level = re_result.group(1)[:-1]
                 if verbosity_levels[level] >= self.verbosity_level:
                     dt_now = datetime.datetime.now()
-                    self.latest_telems.append([level, dt_now, [f"{s}" for s in re_result.group(2).split(",") if s]])
+                    line_data = [f"{s}" for s in re_result.group(2).split(",") if s]
+                    line_data = [l.replace('\x00', '') for l in line_data]
+                    self.latest_telems.append([level, dt_now, line_data])
 
     def clear_console(self):
         self.window['console'].update(value='')
@@ -274,7 +276,6 @@ class LogPrinter():
 
     def print_log(self, level: str, dt_now: str, line_data: list[str]):
         # echo_str = f"[{dt_now}] {level}\t" + "\t".join(line_data)
-        line_data = [l.replace('\x00', '') for l in line_data]
         if len(line_data) > 3 and line_data[0] == "TQDM":
             if "MSG" in line_data:
                 msg_idx = line_data.index("MSG")
