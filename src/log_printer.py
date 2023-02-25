@@ -9,6 +9,7 @@ import logging
 import os
 import re
 import serial
+import subprocess
 import threading
 import PySimpleGUI as sg
 from serial.tools import list_ports
@@ -38,7 +39,7 @@ font_style_popup = 'Helvetica'
 themes = {'Main CPU': 'Dark', 'Transmit CPU': 'DarkBlue', 'Receive CPU': 'DarkAmber'}
 verbosity_levels = {'DEBUG': 0, 'INFO': 1, 'WARN': 2, 'ERROR': 3, 'FATAL': 4, 'NONE': 5}
 cpus = ["Main CPU", "Transmit CPU", "Receive CPU"]
-cpu_log_src = {"Main CPU": "log_main_cpu.csv", "Transmit CPU": "log_trans_cpu.csv", "Receive CPU": "log_rcv_cpu.csv"}
+cpu_log_src = {"Main CPU": "./log/log_main_cpu.csv", "Transmit CPU": "./log/log_trans_cpu.csv", "Receive CPU": "./log/log_rcv_cpu.csv"}
 baudrates = [9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600]
 
 default_config = {
@@ -103,6 +104,8 @@ class FindWindow():
         self.highlight_idx = 0
         self.found_txt_idxes = []
         self.last_pressed_btn = 'next'
+
+
 class LogPrinter():
     def __init__(self):
         self.cpu = 'Main CPU'
@@ -211,6 +214,7 @@ class LogPrinter():
         self.window.bind("<Control-t>", "select-Transmit")       # Alt-t
         self.window.bind("<Control-m>", "select-Main")       # Alt-m
         self.window.bind("<Control-r>", "select-Receive")        # Alt-r
+        self.window.bind("<Control-n>", "open-new-console")
         self.window.bind("<Control-f>", "find")        # Alt-s
 
     def refresh_serial_ports(self):
@@ -239,7 +243,7 @@ class LogPrinter():
         except serial.serialutil.SerialException as e:
             self.serial = None
             sg.popup(f'{e}', title='Failed to open serial port', keep_on_top=True, font=(font_style_popup, 12))
-            logging.error(f'{datetime.datetime.now()},{self.cpu},{e}')
+            logging.error(f'{datetime.datetime.now()}:{self.cpu}:{e}')
             self.stop_reading_log()
 
     def stop_reading_log(self):
@@ -256,15 +260,23 @@ class LogPrinter():
         while self.is_serial_opened:
             try:    # 見えぬバグ ifで消した 午前2時
                 byte_data = self.serial.readline()
+            except serial.SerialException:  # "ReadFile failed (OSError(9, 'ハンドルが無効です。', None, 6))" will be raised when closing the serial port
+                pass
+            except AttributeError:  # "'NoneType' object has no attribute 'hEvent'" will be raised when closing the serial port
+                pass
+            except TypeError:   # "byref() argument must be a ctypes instance, not 'NoneType'" will be raised when closing the serial port
+                pass
             except Exception as e:
-                logging.error(f'{datetime.datetime.now()},{self.cpu},{e}')
+                logging.error(f'{datetime.datetime.now()}:read_telemetry:{self.cpu}:{e}')
             str_data = byte_data.decode(errors='ignore')
             re_result = self.pattern_tm.match(str_data)
             if re_result:
                 level = re_result.group(1)[:-1]
                 if verbosity_levels[level] >= self.verbosity_level:
                     dt_now = datetime.datetime.now()
-                    self.latest_telems.append([level, dt_now, [f"{s}" for s in re_result.group(2).split(",") if s]])
+                    line_data = [f"{s}" for s in re_result.group(2).split(",") if s]
+                    line_data = [l.replace('\x00', '') for l in line_data]
+                    self.latest_telems.append([level, dt_now, line_data])
 
     def clear_console(self):
         self.window['console'].update(value='')
@@ -278,7 +290,7 @@ class LogPrinter():
             with open(self.log_src, 'a') as f:
                 f.write(f"{dt_now},{level},{','.join(line_data)}\n")
         except Exception as e:
-            logging.error(f'{datetime.datetime.now()},{self.cpu},{e}')
+            logging.error(f'{datetime.datetime.now()}:save_log:{self.cpu}:{e}')
 
     def print_log(self, level: str, dt_now: str, line_data: list[str]):
         # echo_str = f"[{dt_now}] {level}\t" + "\t".join(line_data)
@@ -286,9 +298,13 @@ class LogPrinter():
             if "MSG" in line_data:
                 msg_idx = line_data.index("MSG")
             else:
-                logging.warn(f'{datetime.datetime.now()},{self.cpu},MSG is not in line_data,{line_data}')
+                logging.warn(f'{datetime.datetime.now()}:{self.cpu}:MSG is not in line_data,{line_data}')
                 return
-            self.print_processing_bar(level, dt_now, line_data[1:msg_idx], int(line_data[msg_idx + 1]), int(line_data[msg_idx + 2]))
+            try:
+                self.print_processing_bar(level, dt_now, line_data[1:msg_idx], int(line_data[msg_idx + 1]), int(line_data[msg_idx + 2]))
+            except:
+                logging.error(f'{datetime.datetime.now()}:print_log:{self.cpu}:{line_data}')
+                return
             self.is_prev_tqdm = True
         else:
             echo_str = "\t".join(line_data)
@@ -307,7 +323,7 @@ class LogPrinter():
     def print_processing_bar(self, level: str, dt_now: str, msg: str, step: int, max_step: int):
         echo_str = "\t".join(msg)
         if max_step == 0:
-            logging.warn(f'{datetime.datetime.now()},{self.cpu},max_step is 0,{level},{msg},{step},{max_step}')
+            logging.warn(f'{datetime.datetime.now()}:{self.cpu}:max_step is 0:{level}:{msg}:{step}:{max_step}')
             return
         echo_str += f"\t[{step:4d} / {max_step:4d}]\t"
         echo_str += "#" * int(step / max_step * 30) + " " * (30 - int(step / max_step * 30)) + "|"
@@ -340,6 +356,9 @@ class LogPrinter():
                 self.verbosity_level = len(verbosity_levels) - 1
         key = [k for k, v in verbosity_levels.items() if v == self.verbosity_level][0]
         self.window['level'].update(value=key)
+
+    def open_new_console(self):
+        subprocess.Popen('./obc-debug-console.exe')
 
     def configure_console(self, font_size: str, tab_len: str, max_console_lines: str):
         if font_size.isdecimal():
