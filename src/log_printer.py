@@ -90,6 +90,19 @@ class ConfigWindow():
         self.window.bind('<Escape>', 'cancel')
 
 
+class FindWindow():
+    def __init__(self):
+        self.layout = [
+            [sg.Input(key='Find', font=(font_style_window, 12), enable_events=True)],
+            [sg.Button('Previous', key='previous'), sg.Button('Next', key='next'), sg.Text('', key='count')],
+        ]
+        self.window = sg.Window('Find', self.layout, resizable=True, finalize=True, icon=img_to_base64(ICON_IMG_SRC))
+        self.window.bind('<Escape>', 'cancel')
+        self.window['Find'].bind('<Return>', '_Enter')
+        self.serach_txt = ''
+        self.highlight_idx = 0
+        self.found_txt_idxes = []
+        self.last_pressed_btn = 'next'
 class LogPrinter():
     def __init__(self):
         self.cpu = 'Main CPU'
@@ -161,6 +174,8 @@ class LogPrinter():
             finalize=True
         )
         self.window.force_focus()
+        self.window['console'].widget.tag_config('CANDIDATE', foreground='black', background='white')
+        self.window['console'].widget.tag_config('HIGHLIGHT', foreground='white', background='blue')
         self.window['console'].update(disabled=True)
         self.bind_shortcutkeys()
         sg.cprint_set_output_destination(self.window, 'console')
@@ -196,6 +211,7 @@ class LogPrinter():
         self.window.bind("<Control-t>", "select-Transmit")       # Alt-t
         self.window.bind("<Control-m>", "select-Main")       # Alt-m
         self.window.bind("<Control-r>", "select-Receive")        # Alt-r
+        self.window.bind("<Control-f>", "find")        # Alt-s
 
     def refresh_serial_ports(self):
         ports = listup_serial_ports()
@@ -303,6 +319,12 @@ class LogPrinter():
             self.window['console'].Widget.delete(line_num - 1, line_num)
             self.window['console'].update(disabled=True)
         sg.cprint(f"{echo_str}", autoscroll=self.autoscroll, end='\n', text_color=level_colors[level], background_color=level_bg_colors[level])
+
+    def add_tag_to_console(self, start_idx: tuple(int, int), end_idx: tuple(int, int), tag_name: str):
+        self.window['console'].Widget.tag_add(tag_name, start_idx, end_idx)
+
+    def remove_tag_from_console(self, start_idx: tuple(int, int), end_idx: tuple(int, int), tag_name: str):
+        self.window['console'].Widget.tag_remove(tag_name, start_idx, end_idx)
 
     def set_verbosity_level(self, level: str):
         self.verbosity_level = verbosity_levels[level]
