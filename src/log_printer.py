@@ -215,7 +215,7 @@ class LogPrinter():
         self.window.bind("<Control-m>", "select-Main")       # Alt-m
         self.window.bind("<Control-r>", "select-Receive")        # Alt-r
         self.window.bind("<Control-n>", "open-new-console")
-        self.window.bind("<Control-f>", "find")        # Alt-s
+        self.window.bind("<Control-f>", "find")
 
     def refresh_serial_ports(self):
         ports = listup_serial_ports()
