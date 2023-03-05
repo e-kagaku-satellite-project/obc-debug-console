@@ -185,12 +185,11 @@ class LogPrinter():
 
     def layouts(self, ports):
         menubar = sg.MenuBar([['File', ['Configure', 'Exit']], ['Console', ['Clear', 'Copy']]])
-        cpu_cmbbox = sg.Combo(cpus, default_value=self.cpu, size=(15, 1), key='cpu', font=(font_style_window, 16), enable_events=True, readonly=True)
-        port_cmbbox = sg.Combo(ports, default_value=self.port, key='port', size=(20, 1), enable_events=True, readonly=True)
-        baudrate_cmbbox = sg.Combo(baudrates, default_value=baudrates[0], key='baudrate', size=(20, 1), enable_events=True, readonly=True)
-        level_cmbbox = sg.Combo(list(verbosity_levels.keys()), default_value=list(verbosity_levels.keys())[0], key='level', size=(20, 1), enable_events=True, readonly=True)
-        open_btn = sg.Button('Open', key='open')
-        close_btn = sg.Button('Close', key='close', disabled=True)
+        cpu_cmbbox = sg.Combo(cpus, default_value=self.cpu, size=(10, 1), key='cpu', font=(font_style_window, 16), enable_events=True, readonly=True)
+        port_cmbbox = sg.Combo(ports, default_value=self.port, key='port', size=(15, 1), enable_events=True, readonly=True)
+        baudrate_cmbbox = sg.Combo(baudrates, default_value=baudrates[0], key='baudrate', size=(15, 1), enable_events=True, readonly=True)
+        level_cmbbox = sg.Combo(list(verbosity_levels.keys()), default_value=list(verbosity_levels.keys())[0], key='level', size=(15, 1), enable_events=True, readonly=True)
+        open_close_btn = sg.Button('Open', key='open_close')
         refresh_btn = sg.Button('Refresh', key='refresh', enable_events=True)
         log_src_txt = sg.InputText(key='log_src', default_text=self.log_src, size=(30, 1), font=(font_style_window, 12), enable_events=True)
         console_mtl = sg.Multiline(size=(80, 25), font=(font_style_console, self.console_font_size), expand_x=True, expand_y=True, key='console', background_color='#000000', horizontal_scroll=True)
@@ -198,14 +197,14 @@ class LogPrinter():
         layouts = [
             [menubar],
             [cpu_cmbbox, log_src_txt, autoscroll_chkbox],
-            [port_cmbbox, baudrate_cmbbox, level_cmbbox, open_btn, close_btn, refresh_btn],
+            [port_cmbbox, baudrate_cmbbox, level_cmbbox, open_close_btn, refresh_btn],
             [console_mtl]
         ]
         return layouts
 
     def bind_shortcutkeys(self):
         self.window.bind('<Shift-A>', 'autoscroll_key')        # Alt-a
-        self.window.bind("<Shift-O>", "open_key")  # Open serial port      # Alt-o
+        self.window.bind("<Shift-O>", "open_close_key")  # Open serial port      # Alt-o
         self.window.bind("<Shift-C>", "close_key")  # Close serial port        # Alt-c
         self.window.bind("<Shift-R>", "refresh_key")  # Refresh serial port        # Alt-r
         self.window.bind("<Shift-E>", "Exit")  # Exit      # Alt-e
@@ -231,8 +230,7 @@ class LogPrinter():
         try:
             self.serial = serial.Serial(self.port, self.baudrate)
             self.update_config(**{self.cpu: {'port': self.port, 'baudrate': self.baudrate}})
-            self.window['open'].update(disabled=True)
-            self.window['close'].update(disabled=False)
+            self.window['open_close'].update(text='Close')
             self.window['port'].update(disabled=True)
             self.window['baudrate'].update(disabled=True)
             self.window['log_src'].update(disabled=True)
@@ -248,8 +246,7 @@ class LogPrinter():
 
     def stop_reading_log(self):
         self.serial.close() if self.serial is not None else None
-        self.window['open'].update(disabled=False)
-        self.window['close'].update(disabled=True)
+        self.window['open_close'].update(text='Open')
         self.window['port'].update(disabled=False)
         self.window['baudrate'].update(disabled=False)
         self.window['log_src'].update(disabled=False)
