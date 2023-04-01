@@ -163,7 +163,10 @@ class LogPrinter():
 
     def create_window(self, config: dict) -> sg.Window:
         ports = listup_serial_ports()
-        self.port = config['port'] if config['port'] in list(ports.values()) else list(ports.values())[0]
+        if config[self.cpu]['port'] in list(ports.keys()):
+            self.port = config[self.cpu]['port']
+        else:
+            self.port = list(ports.keys())[0]
         self.log_src = cpu_log_src[self.cpu]
         self.verbosity_level = list(verbosity_levels.values())[0]
         self.latest_telems = []  # バッファとして機能するようにリストにした，FIFO形式
@@ -188,7 +191,7 @@ class LogPrinter():
     def layouts(self, ports):
         menubar = sg.MenuBar([['File', ['Configure', 'Exit']], ['Console', ['Clear', 'Copy']]])
         cpu_cmbbox = sg.Combo(cpus, default_value=self.cpu, size=(10, 1), key='cpu', font=(font_style_window, 16), enable_events=True, readonly=True)
-        port_cmbbox = sg.Combo(ports, default_value=self.port, key='port', size=(15, 1), enable_events=True, readonly=True)
+        port_cmbbox = sg.Combo(ports, default_value=self.port, key='port', size=(25, 1), enable_events=True, readonly=True)
         baudrate_cmbbox = sg.Combo(baudrates, default_value=baudrates[0], key='baudrate', size=(15, 1), enable_events=True, readonly=True)
         level_cmbbox = sg.Combo(list(verbosity_levels.keys()), default_value=list(verbosity_levels.keys())[0], key='level', size=(15, 1), enable_events=True, readonly=True)
         open_close_btn = sg.Button('Open', key='open_close')
@@ -221,7 +224,10 @@ class LogPrinter():
     def refresh_serial_ports(self):
         ports = listup_serial_ports()
         config = self.load_config()
-        self.port = config['port'] if config['port'] in list(ports.values()) else list(ports.values())[0]
+        if config[self.cpu]['port'] in list(ports.keys()):
+            self.port = config[self.cpu]['port']
+        else:
+            self.port = list(ports.keys())[0]
         self.window['port'].update(values=ports, value=self.port)
 
     def start_reading_log(self):

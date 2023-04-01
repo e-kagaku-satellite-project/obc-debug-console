@@ -1,5 +1,5 @@
 import PySimpleGUI as sg
-from src.log_printer import ConfigWindow, LogPrinter, FindWindow
+from src.log_printer import ConfigWindow, LogPrinter, FindWindow, listup_serial_ports
 
 if __name__ == "__main__":
     log_printer = LogPrinter()
@@ -29,7 +29,9 @@ if __name__ == "__main__":
         elif 'Copy' == main_evt:   # Copy log window
             log_printer.copy_console()
         elif main_evt == 'port':   # Select serial port
-            log_printer.port = main_vals['port']
+            ports = listup_serial_ports()
+            log_printer.port = list(ports.keys())[list(ports.values()).index(main_vals['port'])]
+            # log_printer.port = ports[main_vals['port']]
         elif main_evt == 'baudrate':   # Set serial baudrate
             log_printer.baudrate = main_vals['baudrate']
         elif main_evt == 'level':  # Change verbosity level
