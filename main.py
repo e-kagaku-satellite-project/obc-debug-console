@@ -31,7 +31,6 @@ if __name__ == "__main__":
         elif main_evt == 'port':   # Select serial port
             ports = listup_serial_ports()
             log_printer.port = list(ports.keys())[list(ports.values()).index(main_vals['port'])]
-            # log_printer.port = ports[main_vals['port']]
         elif main_evt == 'baudrate':   # Set serial baudrate
             log_printer.baudrate = main_vals['baudrate']
         elif main_evt == 'level':  # Change verbosity level

@@ -164,9 +164,9 @@ class LogPrinter():
     def create_window(self, config: dict) -> sg.Window:
         ports = listup_serial_ports()
         if config[self.cpu]['port'] in list(ports.keys()):
-            self.port = ports[config[self.cpu]['port']]
+            self.port = config[self.cpu]['port']
         else:
-            self.port = list(ports.values())[0]
+            self.port = list(ports.keys())[0]
         self.log_src = cpu_log_src[self.cpu]
         self.verbosity_level = list(verbosity_levels.values())[0]
         self.latest_telems = []  # バッファとして機能するようにリストにした，FIFO形式
@@ -189,9 +189,10 @@ class LogPrinter():
         sg.cprint_set_output_destination(self.window, 'console')
 
     def layouts(self, ports):
+        ports_dict = listup_serial_ports()
         menubar = sg.MenuBar([['File', ['Configure', 'Exit']], ['Console', ['Clear', 'Copy']]])
         cpu_cmbbox = sg.Combo(cpus, default_value=self.cpu, size=(10, 1), key='cpu', font=(font_style_window, 16), enable_events=True, readonly=True)
-        port_cmbbox = sg.Combo(ports, default_value=self.port, key='port', size=(25, 1), enable_events=True, readonly=True)
+        port_cmbbox = sg.Combo(ports, default_value=ports_dict[self.port], key='port', size=(25, 1), enable_events=True, readonly=True)
         baudrate_cmbbox = sg.Combo(baudrates, default_value=baudrates[0], key='baudrate', size=(15, 1), enable_events=True, readonly=True)
         level_cmbbox = sg.Combo(list(verbosity_levels.keys()), default_value=list(verbosity_levels.keys())[0], key='level', size=(15, 1), enable_events=True, readonly=True)
         open_close_btn = sg.Button('Open', key='open_close')
