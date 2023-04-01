@@ -65,7 +65,9 @@ ICON_IMG_SRC = "img/icon.png"
 
 def listup_serial_ports():
     devices = list_ports.comports()
-    ports = [info.device for info in devices] if len(devices) != 0 else ['']
+    ports = {}
+    for device in devices:
+        ports[device.device] = device.description
     return ports
 
 
@@ -161,7 +163,7 @@ class LogPrinter():
 
     def create_window(self, config: dict) -> sg.Window:
         ports = listup_serial_ports()
-        self.port = config[self.cpu]['port'] if config[self.cpu]['port'] in ports else ports[0]
+        self.port = config['port'] if config['port'] in list(ports.values()) else list(ports.values())[0]
         self.log_src = cpu_log_src[self.cpu]
         self.verbosity_level = list(verbosity_levels.values())[0]
         self.latest_telems = []  # バッファとして機能するようにリストにした，FIFO形式
@@ -170,7 +172,7 @@ class LogPrinter():
 
         self.window = sg.Window(
             'OBC Debugger',
-            self.layouts(ports),
+            self.layouts(list(ports.values())),
             icon=img_to_base64(ICON_IMG_SRC),
             resizable=True,
             use_default_focus=False,
@@ -219,7 +221,7 @@ class LogPrinter():
     def refresh_serial_ports(self):
         ports = listup_serial_ports()
         config = self.load_config()
-        self.port = config[self.cpu]['port'] if config[self.cpu]['port'] in ports else ports[0]
+        self.port = config['port'] if config['port'] in list(ports.values()) else list(ports.values())[0]
         self.window['port'].update(values=ports, value=self.port)
 
     def start_reading_log(self):
