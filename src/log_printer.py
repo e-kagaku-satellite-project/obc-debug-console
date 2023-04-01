@@ -164,9 +164,9 @@ class LogPrinter():
     def create_window(self, config: dict) -> sg.Window:
         ports = listup_serial_ports()
         if config[self.cpu]['port'] in list(ports.keys()):
-            self.port = config[self.cpu]['port']
+            self.port = ports[config[self.cpu]['port']]
         else:
-            self.port = list(ports.keys())[0]
+            self.port = list(ports.values())[0]
         self.log_src = cpu_log_src[self.cpu]
         self.verbosity_level = list(verbosity_levels.values())[0]
         self.latest_telems = []  # バッファとして機能するようにリストにした，FIFO形式
